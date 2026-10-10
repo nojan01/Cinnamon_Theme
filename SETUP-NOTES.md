@@ -10,8 +10,8 @@ Legende: **[sudo]** = benötigt Root-Rechte · **[maschinenspezifisch]** = muss 
 | Einstellung | Vorher |
 |---|---|
 | `org.cinnamon.theme name` | `CBlue` (war bereits gesetzt) |
-| `org.cinnamon.desktop.interface gtk-theme` | `Mint-L-Dark-Blue` (unverändert) |
-| `org.cinnamon.desktop.interface icon-theme` | `Mint-L-Blue` (unverändert) |
+| `org.cinnamon.desktop.interface gtk-theme` | `Mint-L-Dark-Blue` (jetzt `Mint-L-Dark-Grey`, siehe 7) |
+| `org.cinnamon.desktop.interface icon-theme` | `Mint-L-Blue` (jetzt `Mint-L-Grey`, siehe 7) |
 | `org.cinnamon.desktop.wm.preferences theme` | `Mint-Y` (unverändert) |
 | `org.cinnamon.desktop.background picture-uri` | `file:///usr/share/backgrounds/linuxmint/sele_ring_center.jpg` (gesichert in `~/.themes/.previous-wallpaper-uri`) |
 | `org.cinnamon panels-enabled` | `['1:0:bottom']` (gesichert in `~/.themes/.previous-panel-settings`) |
@@ -169,6 +169,49 @@ cp "squashfs-root/GitHub Copilot.png" ~/.local/share/icons/hicolor/256x256/apps/
 
 Für den Installer: Starter mit `Icon=*-symbolic` im Dock erkennen und den Nutzer
 auf ein farbiges Symbol hinweisen. Das GitHub-Symbol wird nicht mitgeliefert (Markenrecht).
+
+## 7. Darstellung: Mauszeiger, Anwendungen, Symbole
+
+Vom Nutzer in *Systemeinstellungen → Themen* gewählt (passend zum grauen Nebel).
+Alle Pakete gehören zu Linux Mint (`mint-themes`, `mint-l-icons`, `mint-cursor-themes`),
+müssen also nicht mitgeliefert werden.
+
+| Bereich | Wert |
+|---|---|
+| Mauszeiger | `Bibata-Modern-Classic`, Größe 23 |
+| Anwendungen (GTK) | `Mint-L-Dark-Grey` |
+| Symbole | `Mint-L-Grey` |
+| Schreibtisch (Cinnamon) | `CBlue` → wird später durch das eigene Theme ersetzt |
+| Fensterrahmen | `Mint-Y` (unverändert) |
+| Dunkler Modus | Dunklen Modus bevorzugen |
+| Symbole in Menüs | an |
+| Symbole auf Knöpfen | aus |
+| Zur Klickposition in der Bildlaufleiste springen | an (GTK-Standard) |
+| Überlagerungsrollbalken | an |
+| Bildlaufleistenbreite überschreiben | an, 10 px |
+
+```bash
+for s in org.cinnamon.desktop.interface org.gnome.desktop.interface; do
+  gsettings set $s cursor-theme 'Bibata-Modern-Classic'
+  gsettings set $s gtk-theme    'Mint-L-Dark-Grey'
+  gsettings set $s icon-theme   'Mint-L-Grey'
+done
+gsettings set org.cinnamon.desktop.interface cursor-size 23
+gsettings set org.x.apps.portal color-scheme 'prefer-dark'
+gsettings set org.cinnamon.desktop.interface menus-have-icons true
+gsettings set org.cinnamon.desktop.interface buttons-have-icons false
+gsettings set org.cinnamon.desktop.interface gtk-overlay-scrollbars true
+```
+
+Bildlaufleistenbreite: Cinnamon schreibt sie nach `~/.config/gtk-3.0/gtk.css`
+(Installer: Block nur ergänzen, vorhandene Datei nicht überschreiben):
+
+```css
+/***** scrollbar slider - cinnamon-settings-generated - do not edit *****/
+scrollbar slider {
+	min-width: 10px;
+	min-height: 10px;}
+```
 
 ## Sicherungen auf dem System
 
