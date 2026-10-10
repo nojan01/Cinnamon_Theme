@@ -154,8 +154,9 @@ Plank Reloaded hat kein Docklet für Sitzungsaktionen, daher ein eigener Starter
 
 - `cinnamon-theme-session` (Python/GTK3) → `~/.local/bin/` (Modus 755).
   Ohne Argument: dunkler Dialog mit Herunterfahren, Neustarten, Abmelden,
-  Benutzer wechseln, Bereitschaft, Abbrechen (Esc schließt). Öffnet direkt über
-  dem Dock (Arbeitsbereich-Unterkante), waagerecht am Mauszeiger ausgerichtet.
+  Benutzer wechseln, Bereitschaft, Abbrechen (Esc schließt). Öffnet waagerecht
+  mittig, ca. 2 cm über dem Dock (Unterkante Arbeitsbereich; DPI vom Monitor, bei
+  unplausiblen Werten wie unter xrdp 96 dpi).
   Mit Argument (`shutdown|reboot|logout|switch-user|suspend`) direkte Ausführung.
 - `cinnamon-theme-session.desktop` → `~/.local/share/applications/`; `Exec=` beim
   Installieren auf absoluten Pfad setzen (PATH von Plank enthält `~/.local/bin` evtl. nicht):

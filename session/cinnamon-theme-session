@@ -52,14 +52,25 @@ def error(msg):
         print(msg, file=sys.stderr)
 
 
-DOCK_GAP = 12
+DOCK_GAP_CM = 2.0
+EDGE_GAP = 12
+
+
+def cm_to_px(monitor, cm):
+    """Zentimeter in Pixel; unplausible Monitorangaben (z. B. xrdp) -> 96 dpi."""
+    dpi = 96.0
+    mm = monitor.get_width_mm()
+    if mm > 0:
+        measured = monitor.get_geometry().width / (mm / 25.4)
+        if 70 <= measured <= 400:
+            dpi = measured
+    return round(cm / 2.54 * dpi)
 
 
 def place_above_dock(win, Gdk):
-    """Fenster knapp über dem Dock, waagerecht am Mauszeiger ausrichten."""
+    """Fenster waagerecht mittig, etwa 2 cm über dem Dock."""
     display = Gdk.Display.get_default()
-    seat = display.get_default_seat()
-    _screen, px, py = seat.get_pointer().get_position()
+    _screen, px, py = display.get_default_seat().get_pointer().get_position()
     monitor = display.get_monitor_at_point(px, py)
     geo = monitor.get_geometry()
     work = monitor.get_workarea()
@@ -69,10 +80,8 @@ def place_above_dock(win, Gdk):
     bottom = work.y + work.height
     if bottom >= geo.y + geo.height:
         bottom = min(bottom, py - 40)
-    y = bottom - h - DOCK_GAP
-    x = px - w // 2
-    x = max(work.x + DOCK_GAP, min(x, work.x + work.width - w - DOCK_GAP))
-    y = max(work.y + DOCK_GAP, y)
+    y = max(work.y + EDGE_GAP, bottom - h - cm_to_px(monitor, DOCK_GAP_CM))
+    x = work.x + (work.width - w) // 2
     win.move(x, y)
 
 
