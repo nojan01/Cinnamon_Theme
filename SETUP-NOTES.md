@@ -85,12 +85,16 @@ Höhe bleibt vorerst 50 px (Original-CBlue wirkt mit ca. 24–28 px; noch offen)
    sudo apt update && sudo apt install plank-reloaded
    ```
    Installierte Version: 0.11.176. Projekt: https://github.com/zquestz/plank-reloaded
-2. Plank-Theme: `CBlue/cinnamon/dock.theme` nach `~/.local/share/plank/themes/CBlue/dock.theme`.
+2. Plank-Themes: alle Ordner aus `plank/themes/` nach `~/.local/share/plank/themes/` kopieren.
+   - `Nebel-Grau` (**Standard**, passend zum Nebel-Wallpaper): halbtransparentes Dunkelgrau
+     (Füllung `60,60,60,190` → `35,35,35,150`), heller Rand `150,150,150,140`.
+   - `Nebel-Transparent`: keine Füllung, nur feiner Rand `200,200,200,90`.
+   - `CBlue`: blaues Original aus `CBlue/cinnamon/dock.theme`.
 3. Einstellungen (Schema `net.launchpad.plank.dock.settings`, Pfad `/net/launchpad/plank/docks/dock1/`):
 
    | Schlüssel | Wert |
    |---|---|
-   | `theme` | `'CBlue'` |
+   | `theme` | `'Nebel-Grau'` (vorher `'CBlue'`) |
    | `position` | `'bottom'` |
    | `alignment` / `items-alignment` | `'center'` (Standard) |
    | `hide-mode` | `'none'` |
