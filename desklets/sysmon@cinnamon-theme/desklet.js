@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 const St = imports.gi.St;
 const GLib = imports.gi.GLib;
+const Gio = imports.gi.Gio;
+const PopupMenu = imports.ui.popupMenu;
 const Clutter = imports.gi.Clutter;
 const ByteArray = imports.byteArray;
 const Mainloop = imports.mainloop;
@@ -10,6 +12,46 @@ const Settings = imports.ui.settings;
 const FONT = "JetBrains Mono";
 const GREEN = [0x8f / 255, 0xc4 / 255, 0x6b / 255];
 const GREY = [0.82, 0.82, 0.82];
+
+// Sprache gemeinsam für alle Nebel-Desklets (Datei, Rechtsklick „Switch to English“)
+const LANG_FILE = GLib.build_filenamev([GLib.get_user_config_dir(), "cinnamon-theme", "desklet-language"]);
+
+function readLang() {
+    try {
+        let [ok, data] = GLib.file_get_contents(LANG_FILE);
+        let v = ok ? imports.byteArray.toString(data).trim() : "";
+        if (v === "de" || v === "en") return v;
+    } catch (e) {}
+    return GLib.get_language_names()[0].startsWith("de") ? "de" : "en";
+}
+
+function writeLang(v) {
+    GLib.mkdir_with_parents(GLib.path_get_dirname(LANG_FILE), 0o755);
+    GLib.file_set_contents(LANG_FILE, v + "\n");
+}
+
+function setupLanguage(desklet, onChange) {
+    GLib.mkdir_with_parents(GLib.path_get_dirname(LANG_FILE), 0o755);
+    desklet.lang = readLang();
+    let item = new PopupMenu.PopupMenuItem("");
+    let label = () => item.label.set_text(desklet.lang === "de" ? "Switch to English" : "Auf Deutsch umschalten");
+    label();
+    item.connect("activate", () => writeLang(desklet.lang === "de" ? "en" : "de"));
+    desklet._menu.addMenuItem(item, 0);
+    desklet._langMonitor = Gio.File.new_for_path(LANG_FILE).monitor_file(Gio.FileMonitorFlags.NONE, null);
+    desklet._langMonitor.connect("changed", () => {
+        let l = readLang();
+        if (l === desklet.lang) return;
+        desklet.lang = l;
+        label();
+        onChange();
+    });
+}
+
+const T = {
+    de: { cpu: "CPU", mem: "RAM", net: "Netz", load: "Last", notFound: "nicht gefunden", all: "alle" },
+    en: { cpu: "CPU", mem: "RAM", net: "Net", load: "Load", notFound: "not found", all: "all" },
+};
 
 function readFile(path) {
     try {
@@ -107,17 +149,19 @@ class SysmonDesklet extends Desklet.Desklet {
 
         this._box = new St.BoxLayout({ vertical: true, style_class: "sm-desklet" });
         this._labels = [];
-        this._cpuGraph = this._addSection("CPU", new Graph([{ color: GREEN, data: [] }], 100));
-        this._memGraph = this._addSection("RAM", new Graph([{ color: GREEN, data: [] }], 100));
-        this._netGraph = this._addSection("Netz", new Graph(
+        this._cpuGraph = this._addSection("cpu", new Graph([{ color: GREEN, data: [] }], 100));
+        this._memGraph = this._addSection("mem", new Graph([{ color: GREEN, data: [] }], 100));
+        this._netGraph = this._addSection("net", new Graph(
             [{ color: GREEN, data: [] }, { color: GREY, data: [] }], null));
         this.setContent(this._box);
+        setupLanguage(this, () => this._applyLang());
+        this._applyLang();
         this._applyStyle();
     }
 
     _addSection(title, graph) {
         let head = new St.BoxLayout({ style_class: "sm-head" });
-        let t = new St.Label({ style_class: "sm-title", text: title });
+        let t = new St.Label({ style_class: "sm-title" });
         let v = new St.Label({ style_class: "sm-value", text: "…", x_expand: true,
                                x_align: Clutter.ActorAlign.END });
         head.add_actor(t);
@@ -126,7 +170,13 @@ class SysmonDesklet extends Desklet.Desklet {
         this._box.add_actor(graph.actor);
         this._labels.push(t, v);
         graph.value = v;
+        graph.title = t;
+        graph.key = title;
         return graph;
+    }
+
+    _applyLang() {
+        for (let g of [this._cpuGraph, this._memGraph, this._netGraph]) g.title.set_text(T[this.lang][g.key]);
     }
 
     _applyStyle() {
@@ -144,6 +194,7 @@ class SysmonDesklet extends Desklet.Desklet {
     on_desklet_removed() {
         if (this._timer) Mainloop.source_remove(this._timer);
         this._timer = 0;
+        if (this._langMonitor) this._langMonitor.cancel();
     }
 
     _restart() {
@@ -176,7 +227,7 @@ class SysmonDesklet extends Desklet.Desklet {
         this._prevCpu = { idle, total };
         let load = (readFile("/proc/loadavg").split(" ").slice(0, 3)).join(" ");
         this._cpuGraph.push([usage], limit);
-        this._cpuGraph.value.set_text(`${usage.toFixed(0).padStart(3)} %   Last ${load}`);
+        this._cpuGraph.value.set_text(`${usage.toFixed(0).padStart(3)} %   ${T[this.lang].load} ${load}`);
     }
 
     _updateMem(limit) {
@@ -214,7 +265,7 @@ class SysmonDesklet extends Desklet.Desklet {
             found = true;
         }
         if (!found) {
-            this._netGraph.value.set_text(`${iface || "?"} nicht gefunden`);
+            this._netGraph.value.set_text(`${iface || "?"} ${T[this.lang].notFound}`);
             return;
         }
         let now = GLib.get_monotonic_time() / 1e6;
@@ -229,7 +280,7 @@ class SysmonDesklet extends Desklet.Desklet {
         this._prevNet = { iface, rx, tx, t: now };
         this._netGraph.push([down, up], limit);
         this._netGraph.value.clutter_text.set_markup(
-            `<span font_family="${FONT}">${iface || "alle"}  ` +
+            `<span font_family="${FONT}">${iface || T[this.lang].all}  ` +
             `<span foreground="#8fc46b">↓ ${fmtBytes(down)}/s</span>  ` +
             `<span foreground="#d1d1d1">↑ ${fmtBytes(up)}/s</span></span>`);
     }
@@ -238,4 +289,3 @@ class SysmonDesklet extends Desklet.Desklet {
 function main(metadata, deskletId) {
     return new SysmonDesklet(metadata, deskletId);
 }
-

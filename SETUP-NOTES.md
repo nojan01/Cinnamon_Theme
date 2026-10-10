@@ -137,6 +137,17 @@ gsettings set org.cinnamon enabled-desklets "['fastfetch@cinnamon-theme:5:1375:3
 gsettings set org.cinnamon next-desklet-id 7
 ```
 
+## 4c. Sprache der Desklets (Deutsch / English)
+
+- Rechtsklick auf eine der beiden Anzeigen → „Switch to English“ bzw. „Auf Deutsch
+  umschalten“. Die Wahl gilt für beide Desklets gleichzeitig.
+- Gespeichert in `~/.config/cinnamon-theme/desklet-language` (`de` oder `en`);
+  ohne Datei richtet sich die Sprache nach der Systemsprache. Beide Desklets
+  beobachten die Datei und schalten sofort um.
+- Übersetzt werden Datum (Wochentag, Monat, Reihenfolge), die fastfetch-Bezeichnungen
+  (z. B. Uptime → Laufzeit, Memory → Speicher), Zeitangaben der Laufzeit sowie die
+  Texte der Systemlast (Netz/Net, Last/Load).
+
 ## 5. Dock: Plank Reloaded
 
 1. **[sudo]** Altes `plank` (0.11.89 aus Ubuntu) wurde zuerst installiert, dann durch **Plank Reloaded** ersetzt (Konflikt wird von apt aufgelöst). Installation über die offizielle PPA:
