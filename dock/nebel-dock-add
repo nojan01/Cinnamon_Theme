@@ -67,9 +67,14 @@ def watch_favorites():
         known = cur
         save(cur)
 
+    loop = GLib.MainLoop()
+    # nur ein Exemplar je Benutzer: ein neues löst ein älteres ab (z. B. bei mehreren Sitzungen)
+    Gio.bus_own_name(Gio.BusType.SESSION, "de.little_tools.NebelDockSync",
+                     Gio.BusNameOwnerFlags.ALLOW_REPLACEMENT | Gio.BusNameOwnerFlags.REPLACE,
+                     None, None, lambda *_: loop.quit())
     changed()
     settings.connect("changed::favorite-apps", changed)
-    GLib.MainLoop().run()
+    loop.run()
 
 
 if __name__ == "__main__":

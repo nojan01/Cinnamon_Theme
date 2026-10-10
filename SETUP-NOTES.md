@@ -445,6 +445,8 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   `org.cinnamon favorite-apps`; neu hinzugefügte Favoriten kommen ins Dock.
   Bekannter Stand: `~/.config/cinnamon-theme/dock-sync.json`. Entfernen aus den
   Favoriten lässt das Dock unverändert.
+  Es läuft immer nur ein Exemplar (D-Bus-Name `de.little_tools.NebelDockSync`,
+  ein neues löst ein älteres ab – wichtig bei mehreren xrdp-Sitzungen).
 - Beides nutzt die D-Bus-Schnittstelle von Plank:
   `net.launchpad.plank /net/launchpad/plank/dock1 net.launchpad.plank.Items.Add(file-URI)`.
 - Von Hand: `nebel-dock-add org.gnome.Calculator.desktop`.
