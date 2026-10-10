@@ -286,9 +286,11 @@ do_plank() {
   gset "$S" zoom-enabled true
   gset "$S" zoom-percent 200
   local auto="$HOME/.config/autostart/plank.desktop"
-  # Phase „Desktop“: startet vor den übrigen Programmen statt am Ende der Anmeldung
+  # Phase „Desktop“: startet vor den übrigen Programmen statt am Ende der Anmeldung.
+  # Plank meldet sich nicht bei der Sitzung an; der Starter beendet sich sofort,
+  # sonst wartet cinnamon-session 30 s (Hintergrund/Desktop erscheinen spät).
   remember_path "$auto"; mkdir -p "$(dirname "$auto")"
-  printf '[Desktop Entry]\nType=Application\nName=Plank\nExec=plank\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Phase=Desktop\nX-GNOME-Autostart-Delay=0\nNoDisplay=false\n' > "$auto"
+  printf '[Desktop Entry]\nType=Application\nName=Plank\nExec=sh -c "plank >/dev/null 2>&1 &"\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Phase=Desktop\nX-GNOME-Autostart-Delay=0\nNoDisplay=false\n' > "$auto"
 
   local L="$HOME/.config/plank/dock1/launchers" mode="${DOCK_MODE:-}"
   if [ -z "$mode" ]; then
