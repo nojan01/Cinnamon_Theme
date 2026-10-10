@@ -147,6 +147,25 @@ Festgelegt in `plank/default-apps.conf` (Vorlagen in `plank/launchers/`). Bei de
 Ablauf im Installer: Plank beenden → vorhandene `~/.config/plank/dock1/launchers` sichern → Einträge gemäß `default-apps.conf` erzeugen (nur vorhandene `.desktop`-Dateien) → `dock-items` in dieser Reihenfolge setzen → Plank starten.
 Offen: Bestehendes Dock des Nutzers ersetzen oder nur fehlende Standardeinträge ergänzen (beim Installer abfragen).
 
+## 5b. Sitzungsmenü im Dock
+
+Plank Reloaded hat kein Docklet für Sitzungsaktionen, daher ein eigener Starter
+(Ordner `session/`):
+
+- `cinnamon-theme-session` (Python/GTK3) → `~/.local/bin/` (Modus 755).
+  Ohne Argument: dunkler Dialog mit Herunterfahren, Neustarten, Abmelden,
+  Benutzer wechseln, Bereitschaft, Abbrechen (Esc schließt).
+  Mit Argument (`shutdown|reboot|logout|switch-user|suspend`) direkte Ausführung.
+- `cinnamon-theme-session.desktop` → `~/.local/share/applications/`; `Exec=` beim
+  Installieren auf absoluten Pfad setzen (PATH von Plank enthält `~/.local/bin` evtl. nicht):
+  `sed "s|Exec=cinnamon-theme-session|Exec=$HOME/.local/bin/cinnamon-theme-session|"`.
+  Desktop-Actions → Rechtsklick im Dock zeigt die Aktionen direkt.
+- Dockitem `cinnamon-theme-session.dockitem` (Plank vorher beenden), in `dock-items`
+  vor `trash.dockitem` einfügen.
+
+Befehle: `cinnamon-session-quit --power-off|--reboot|--logout --no-prompt`,
+`dm-tool switch-to-greeter` (LightDM; in xrdp-Sitzungen wirkungslos), `systemctl suspend`.
+
 ## 6. Desktop-Starter wiederhergestellt
 
 Beim Ziehen vom Desktop aufs Dock gingen Desktop-Dateien verloren (vermutlich verschoben statt verlinkt); Plank entfernte die dann ungültigen Einträge beim Neustart.

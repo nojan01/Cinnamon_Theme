@@ -1,0 +1,35 @@
+[Desktop Entry]
+Type=Application
+Name=Sitzung
+Comment=Herunterfahren, Neustarten, Abmelden, Benutzer wechseln, Bereitschaft
+Exec=cinnamon-theme-session
+Icon=system-shutdown
+Terminal=false
+Categories=System;
+StartupNotify=false
+Actions=shutdown;reboot;logout;switch-user;suspend;
+
+[Desktop Action shutdown]
+Name=Herunterfahren
+Icon=system-shutdown
+Exec=cinnamon-theme-session shutdown
+
+[Desktop Action reboot]
+Name=Neustarten
+Icon=system-reboot
+Exec=cinnamon-theme-session reboot
+
+[Desktop Action logout]
+Name=Abmelden
+Icon=system-log-out
+Exec=cinnamon-theme-session logout
+
+[Desktop Action switch-user]
+Name=Benutzer wechseln
+Icon=system-users
+Exec=cinnamon-theme-session switch-user
+
+[Desktop Action suspend]
+Name=Bereitschaft
+Icon=system-suspend
+Exec=cinnamon-theme-session suspend
