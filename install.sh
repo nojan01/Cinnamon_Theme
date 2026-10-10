@@ -377,7 +377,8 @@ do_terminal() {
 
 do_lightdm() {
   log "Anmeldebildschirm (Passwort wird abgefragt)"
-  if as_root /bin/bash "$REPO/system/install-lightdm.sh"; then mark lightdm; else warn "Anmeldebildschirm nicht eingerichtet"; fi
+  local cur=(); [ -f "$HOME/.icons/Nebel-Cursor/index.theme" ] && cur=(--cursor "$HOME/.icons/Nebel-Cursor")
+  if as_root /bin/bash "$REPO/system/install-lightdm.sh" "${cur[@]}"; then mark lightdm; else warn "Anmeldebildschirm nicht eingerichtet"; fi
 }
 
 # ---------------------------------------------------------------- Deinstallation

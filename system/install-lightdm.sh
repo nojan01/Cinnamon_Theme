@@ -8,10 +8,13 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 CONF=/etc/lightdm/slick-greeter.conf
 BG_DIR=/usr/share/backgrounds/cinnamon-theme
 FONT_DIR=/usr/local/share/fonts/JetBrainsMono
+CURSOR_DIR=/usr/share/icons/Nebel-Cursor
+CURSOR_SRC=""
+[ "$1" = "--cursor" ] && { CURSOR_SRC="$2"; shift 2; }
 
 if [ "$1" = "--uninstall" ]; then
     if [ -f "$CONF.cinnamon-theme.bak" ]; then mv "$CONF.cinnamon-theme.bak" "$CONF"; else rm -f "$CONF"; fi
-    rm -rf "$BG_DIR" "$FONT_DIR"; fc-cache -f >/dev/null
+    rm -rf "$BG_DIR" "$FONT_DIR" "$CURSOR_DIR"; fc-cache -f >/dev/null
     echo "Anmeldebildschirm zurückgesetzt."; exit 0
 fi
 
@@ -19,6 +22,11 @@ install -d "$BG_DIR" "$FONT_DIR"
 install -m 644 "$REPO/wallpapers/Linux_Mint_Nebel_3840x2160.jpg" "$BG_DIR/"
 install -m 644 "$REPO"/fonts/JetBrainsMono/*.ttf "$REPO/fonts/JetBrainsMono/OFL.txt" "$FONT_DIR/"
 fc-cache -f >/dev/null
+CURSOR=Bibata-Modern-Classic
+if [ -n "$CURSOR_SRC" ] && [ -f "$CURSOR_SRC/index.theme" ]; then
+    rm -rf "$CURSOR_DIR"; cp -r "$CURSOR_SRC" "$CURSOR_DIR"
+    chmod -R u=rwX,go=rX "$CURSOR_DIR"; CURSOR=Nebel-Cursor
+fi
 [ -f "$CONF" ] && [ ! -f "$CONF.cinnamon-theme.bak" ] && cp "$CONF" "$CONF.cinnamon-theme.bak"
 cat > "$CONF" <<CONF
 [Greeter]
@@ -29,7 +37,7 @@ draw-grid=false
 show-hostname=true
 theme-name=Mint-L-Dark-Grey
 icon-theme-name=Mint-L-Grey
-cursor-theme-name=Bibata-Modern-Classic
+cursor-theme-name=$CURSOR
 cursor-theme-size=24
 font-name=JetBrains Mono 11
 xft-antialias=true

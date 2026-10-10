@@ -387,6 +387,9 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
   - Kopiert das Wallpaper nach `/usr/share/backgrounds/cinnamon-theme/`.
   - Kopiert JetBrains Mono nach `/usr/local/share/fonts/JetBrainsMono/`.
   - Schreibt `/etc/lightdm/slick-greeter.conf` mit Hintergrund, Mint-L-Dark-Grey, Mint-L-Grey, Bibata, JetBrains Mono und Uhrformat.
+  - Mauszeiger: mit `--cursor ~/.icons/Nebel-Cursor` wird der graue Nebel-Cursor nach
+    `/usr/share/icons/Nebel-Cursor` kopiert und eingestellt (sonst Bibata schwarz).
+    `install.sh` übergibt ihn automatisch, wenn er erzeugt wurde.
 - Rückgängig machen mit `sudo system/install-lightdm.sh --uninstall`. Dabei wird die Sicherung `slick-greeter.conf.cinnamon-theme.bak` zurückgespielt.
 - Vorher gab es keine `slick-greeter.conf`.
 
