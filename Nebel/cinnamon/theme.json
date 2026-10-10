@@ -1,0 +1,10 @@
+{
+   "cinnamon-theme": {
+      "name": "Nebel",
+      "author": "Norbert Jander (basiert auf CBlue von Bundy01)",
+      "version": "1.0",
+      "type": "custom",
+      "thumbnail": "thumbnail.png",
+      "url": ""
+   }
+}

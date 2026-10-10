@@ -295,14 +295,87 @@ scrollbar slider {
 	min-height: 10px;}
 ```
 
+## 8. Eigenes Theme „Nebel“ (ersetzt CBlue)
+
+- Wird mit `python3 tools/build-nebel-theme.py` aus `CBlue/cinnamon/` erzeugt und liegt in `Nebel/cinnamon/`. Lizenz GPL-3.0, Grundlage CBlue von Bundy01.
+- Farbtausch in CSS und SVGs:
+  - Blau `#5294e2` wird Mint-Grün `#7ab058`.
+  - `#5a65bd` wird `#5f8c41`.
+  - Bläuliche Grautöne werden neutrale Grautöne.
+  - Die rote Hervorhebung `#aa5555` wird halbtransparentes Grau.
+- Leiste: Hintergrund `rgba(30,30,30,0.35)`, Schrift 10.5pt.
+- Ohne `Wallpaper.png`, `dock.theme` und `TimeFull`.
+- Installation:
+  ```bash
+  cp -r Nebel ~/.themes/Nebel
+  gsettings set org.cinnamon.theme name 'Nebel'
+  ```
+
+## 9. Leiste und Uhr
+
+- `gsettings set org.cinnamon panels-height "['1:34']"` (vorher `['1:50']`).
+- Uhr-Applet `calendar@cinnamon.org` mit eigenem Format:
+  - In `~/.config/cinnamon/spices/calendar@cinnamon.org/<id>.json` (hier `13.json`, Sicherung `.bak`) setzen:
+    - `use-custom-format` = true
+    - `custom-format` = `%H:%M   %a, %-d. %b`
+    - `custom-tooltip-format` = `%A, %-d. %B %Y`
+  - Danach das Applet neu laden mit `ReloadXlet calendar@cinnamon.org APPLET`.
+  - Die Applet-ID ermittelt das Installationsprogramm aus `enabled-applets`.
+
+## 10. Bildschirmschoner (Sperrbildschirm)
+
+```bash
+S=org.cinnamon.desktop.screensaver
+gsettings set $S use-custom-format true
+gsettings set $S time-format '%H:%M'
+gsettings set $S date-format '%A, %-d. %B'
+gsettings set $S font-time 'JetBrains Mono Light 64'
+gsettings set $S font-date 'JetBrains Mono 22'
+gsettings set $S font-message 'JetBrains Mono 13'
+```
+Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-format` stand auf false und das Datumsformat war `%A %B %-e`.
+
+## 11. Terminal-Profil „Nebel“
+
+- Das GNOME-Terminal-Profil mit der UUID `4e3b6c1a-9d2f-4c57-b8a1-6e0f2c9d7a11` ist als Export in `terminal/nebel-profile.dconf` abgelegt.
+- Profil laden:
+  ```bash
+  dconf load /org/gnome/terminal/legacy/profiles:/:<uuid>/ < terminal/nebel-profile.dconf
+  ```
+- Danach die UUID an `/org/gnome/terminal/legacy/profiles:/list` anhängen und als `default` setzen.
+- Einstellungen: Schrift JetBrains Mono 11, Hintergrund `#1e1e1e` mit 8 % Transparenz, Text `#d6d6d6`, Cursor und Grün `#8fc46b`, Markierung `#5f8c41`.
+- Das alte Standardprofil `b1dcc9dd-…` bleibt erhalten.
+
+## 12. Tag/Nacht-Wallpaper
+
+- `python3 tools/make-day-wallpaper.py` erzeugt aus den Wallpapern eine hellere Tagvariante `*_Tag.jpg` (Helligkeit 1.45, Kontrast 0.88, PIL).
+- Das Skript `daynight/cinnamon-theme-daynight` kommt nach `~/.local/bin/`. Es setzt das Tagbild von 07:00 bis 18:59, sonst das Nachtbild. Andere Uhrzeiten lassen sich in `~/.config/cinnamon-theme/daynight.conf` festlegen:
+  ```bash
+  CINNAMON_THEME_DAY_START=7
+  CINNAMON_THEME_NIGHT_START=19
+  ```
+- systemd-User-Units `cinnamon-theme-daynight.{service,timer}` kommen nach `~/.config/systemd/user/`. Der Timer läuft um 07:00 und 19:00, 20 s nach dem Start und zur Sicherheit alle 15 Minuten.
+  ```bash
+  systemctl --user enable --now cinnamon-theme-daynight.timer
+  ```
+- Die Tagvariante muss im selben Ordner liegen: `~/.local/share/backgrounds/Cinnamon_Theme/`.
+
+## 13. Anmeldebildschirm (LightDM / slick-greeter)
+
+- Braucht root, deshalb mit `sudo system/install-lightdm.sh` ausführen.
+  - Kopiert das Wallpaper nach `/usr/share/backgrounds/cinnamon-theme/`.
+  - Kopiert JetBrains Mono nach `/usr/local/share/fonts/JetBrainsMono/`.
+  - Schreibt `/etc/lightdm/slick-greeter.conf` mit Hintergrund, Mint-L-Dark-Grey, Mint-L-Grey, Bibata, JetBrains Mono und Uhrformat.
+- Rückgängig machen mit `sudo system/install-lightdm.sh --uninstall`. Dabei wird die Sicherung `slick-greeter.conf.cinnamon-theme.bak` zurückgespielt.
+- Vorher gab es keine `slick-greeter.conf`.
+
 ## Sicherungen auf dem System
 
 - `~/.themes/.previous-wallpaper-uri`
 - `~/.themes/.previous-panel-settings`
 - `~/.config/plank-backup/launchers-HHMM/` (alte Dock-Einträge)
+- `~/.config/cinnamon/spices/calendar@cinnamon.org/13.json.bak`
 
 ## Offene Punkte / Ideen
 
-- Höhe der Cinnamon-Leiste (Original schmaler)
-- Eigener Theme-Name statt „CBlue“
-- Weitere Anpassungen am Theme folgen
+- Installationsprogramm `install.sh` (in Arbeit)

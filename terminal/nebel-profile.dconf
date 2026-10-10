@@ -1,0 +1,17 @@
+[/]
+background-color='#1e1e1e'
+background-transparency-percent=8
+bold-color-same-as-fg=true
+cursor-background-color='#8fc46b'
+cursor-colors-set=true
+cursor-foreground-color='#1e1e1e'
+font='JetBrains Mono 11'
+foreground-color='#d6d6d6'
+highlight-background-color='#5f8c41'
+highlight-colors-set=true
+highlight-foreground-color='#ffffff'
+palette=['#2a2a2a', '#d0675f', '#8fc46b', '#d8b86a', '#7f9fb3', '#a88bb0', '#7dbfa8', '#cfcfcf', '#5a5a5a', '#e5847c', '#a9d98a', '#ebcf87', '#9bb9cc', '#c2a6ca', '#98d6c0', '#f2f2f2']
+use-system-font=false
+use-theme-colors=false
+use-transparent-background=true
+visible-name='Nebel'

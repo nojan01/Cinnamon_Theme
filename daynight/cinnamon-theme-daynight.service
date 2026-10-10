@@ -1,0 +1,6 @@
+[Unit]
+Description=Cinnamon_Theme: Tag/Nacht-Wallpaper setzen
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/cinnamon-theme-daynight

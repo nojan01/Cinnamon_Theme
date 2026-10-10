@@ -1,0 +1,24 @@
+#!/bin/bash
+# Setzt das Nebel-Wallpaper passend zur Tageszeit (Tag 07:00–18:59, sonst Nacht).
+# Optional: CINNAMON_THEME_DAY_START / CINNAMON_THEME_NIGHT_START (Stunde) in
+# ~/.config/cinnamon-theme/daynight.conf
+DIR="$HOME/.local/share/backgrounds/Cinnamon_Theme"
+DAY_START=7
+NIGHT_START=19
+CONF="$HOME/.config/cinnamon-theme/daynight.conf"
+[ -f "$CONF" ] && . "$CONF"
+DAY_START=${CINNAMON_THEME_DAY_START:-$DAY_START}
+NIGHT_START=${CINNAMON_THEME_NIGHT_START:-$NIGHT_START}
+
+base=$(ls "$DIR"/Linux_Mint_Nebel_*x*.jpg 2>/dev/null | grep -v '_Tag\.jpg$' | head -1)
+[ -n "$base" ] || exit 0
+h=$((10#$(date +%H)))
+if [ "$h" -ge "$DAY_START" ] && [ "$h" -lt "$NIGHT_START" ]; then
+    img="${base%.jpg}_Tag.jpg"
+    [ -f "$img" ] || img="$base"
+else
+    img="$base"
+fi
+uri="file://$img"
+[ "$(gsettings get org.cinnamon.desktop.background picture-uri)" = "'$uri'" ] && exit 0
+gsettings set org.cinnamon.desktop.background picture-uri "$uri"

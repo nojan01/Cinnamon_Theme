@@ -1,0 +1,11 @@
+[Unit]
+Description=Cinnamon_Theme: Tag/Nacht-Wallpaper umschalten
+
+[Timer]
+OnCalendar=*-*-* 07,19:00:05
+OnStartupSec=20
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
