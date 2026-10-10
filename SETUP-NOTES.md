@@ -369,6 +369,29 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
 - Rückgängig machen mit `sudo system/install-lightdm.sh --uninstall`. Dabei wird die Sicherung `slick-greeter.conf.cinnamon-theme.bak` zurückgespielt.
 - Vorher gab es keine `slick-greeter.conf`.
 
+## 14. Installationsprogramm `install.sh`
+
+- Aufruf: `bash install.sh` (zenity-Auswahl), `--all`, `--components a,b`, `--dock replace|add`, `--no-gui`, `--uninstall`.
+- Bausteine in dieser Reihenfolge: fonts, theme, wallpaper, daynight, appearance, panel, desklets, session, plank, screensaver, terminal, lightdm.
+- **Abhängigkeiten** werden aus der Auswahl ermittelt und in einem Schritt über `system/install-packages.sh` (pkexec bzw. sudo) installiert:
+  - Immer: python3, python3-gi, gir1.2-gtk-3.0, dconf-cli, x11-xserver-utils, fontconfig, zenity, desktop-file-utils
+  - appearance: mint-l-theme, mint-l-icons, mint-cursor-themes
+  - desklets: fastfetch. Fehlt es in den Quellen (Mint 22 / Ubuntu 24.04), wird `ppa:zhangsongcui3371/fastfetch` ergänzt.
+  - plank: plank-reloaded. Fehlt es, wird die Quelle von zquestz mit Schlüssel ergänzt. Das alte `plank` ersetzt apt.
+  - session: cinnamon-session · terminal: gnome-terminal · lightdm: lightdm, slick-greeter · daynight: systemd
+- **Sicherung**: `~/.config/cinnamon-theme/backup.tsv`
+  - Je Zeile ein vorheriger gsettings- oder dconf-Wert oder eine Datei samt Vermerk „existed/new“; überschriebene Dateien liegen unter `~/.config/cinnamon-theme/orig/`.
+  - `--uninstall` spielt alles rückwärts zurück und benennt den Ordner in `cinnamon-theme.removed-<Zeit>` um. Pakete bleiben installiert.
+- **Maschinenspezifische Werte** werden automatisch erkannt:
+  - Wallpapergröße nach dem größten Monitor (`xrandr`)
+  - Desklet-x = Bildschirmbreite − 453 (sysmon y=60, fastfetch y=375)
+  - Panel-ID, Uhr-Applet-ID
+  - Startdatei für Firefox und Terminal
+- Danach wird Cinnamon über D-Bus `org.Cinnamon.RestartCinnamon` neu gestartet, damit Schriften und Theme greifen.
+- Hinweis am Ende: Dock-Starter mit `Icon=*-symbolic` (schlecht sichtbar, siehe 6b).
+- Root-Skripte immer mit `/bin/bash <skript>` aufrufen, weil das Netzlaufwerk Ausführungsrechte nicht zuverlässig behält.
+- Getestet in einer Sandbox (`HOME=/tmp/…`, `GSETTINGS_BACKEND=memory`): Installation und Deinstallation hinterlassen keine Reste.
+
 ## Sicherungen auf dem System
 
 - `~/.themes/.previous-wallpaper-uri`
@@ -378,4 +401,5 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
 
 ## Offene Punkte / Ideen
 
-- Installationsprogramm `install.sh` (in Arbeit)
+- `install-lightdm.sh` muss auf diesem Rechner noch einmal mit sudo ausgeführt werden.
+- Installationsprogramm auf einem frischen Mint-System testen (z. B. in VirtualBox).
