@@ -1,0 +1,8 @@
+{
+    "uuid": "sysmon@cinnamon-theme",
+    "name": "Systemlast",
+    "description": "CPU-, Arbeitsspeicher- und Netzwerkgraph mit aktueller Auslastung",
+    "icon": "utilities-system-monitor",
+    "prevent-decorations": true,
+    "max-instances": "3"
+}

@@ -114,6 +114,29 @@ Vorher: `enabled-desklets` = `@as []`.
 Hinweis für das eigene Theme: CBlue färbt hervorgehobene Desklets rot
 (`.desklet:highlight { background-color: #aa5555 }`) → auf Grau ändern.
 
+## 4b. Systemlast-Desklet (CPU, RAM, Netzwerk)
+
+Eigenes Desklet `desklets/sysmon@cinnamon-theme/`, gleicher Stil wie 4a
+(JetBrains Mono, `rgba(30,30,30,0.30)`, Radius 14 px, Mint-Grün `#8fc46b`).
+Liest nur `/proc` (keine Zusatzpakete), aktualisiert jede Sekunde, Verlauf 60 Punkte.
+
+- **CPU**: Auslastung in % aus `/proc/stat` + Load Average aus `/proc/loadavg`.
+- **RAM**: belegt = `MemTotal − MemAvailable`, in GiB und %.
+- **Netz**: Download (grün) / Upload (grau) pro Sekunde aus `/proc/net/dev`;
+  Schnittstelle automatisch über die Standardroute (`/proc/net/route`), in den
+  Einstellungen überschreibbar. Skala passt sich automatisch an.
+- Einstellungen: Schriftgröße, Graphbreite (380 px → gleich breit wie 4a),
+  Graphhöhe (46 px), Deckkraft, Intervall, Verlaufslänge, Schnittstelle.
+
+Installation analog 4a; Position auf diesem Rechner rechts oben über dem
+fastfetch-Desklet:
+
+```bash
+cp -r desklets/sysmon@cinnamon-theme ~/.local/share/cinnamon/desklets/
+gsettings set org.cinnamon enabled-desklets "['fastfetch@cinnamon-theme:5:1375:375', 'sysmon@cinnamon-theme:6:1375:60']"
+gsettings set org.cinnamon next-desklet-id 7
+```
+
 ## 5. Dock: Plank Reloaded
 
 1. **[sudo]** Altes `plank` (0.11.89 aus Ubuntu) wurde zuerst installiert, dann durch **Plank Reloaded** ersetzt (Konflikt wird von apt aufgelöst). Installation über die offizielle PPA:

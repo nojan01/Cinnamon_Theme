@@ -1,0 +1,13 @@
+.sm-desklet {
+    font-family: "JetBrains Mono", "Ubuntu Sans Mono", monospace;
+    background-color: rgba(30, 30, 30, 0.30);
+    border: 1px solid rgba(160, 160, 160, 0.35);
+    border-radius: 14px;
+    padding: 14px 18px;
+    color: #d6d6d6;
+    spacing: 4px;
+}
+.sm-title { color: #f0f0f0; font-weight: bold; }
+.sm-head { spacing: 8px; }
+.sm-value { color: #d6d6d6; }
+.sm-graph { margin-bottom: 8px; }
