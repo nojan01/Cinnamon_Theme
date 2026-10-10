@@ -169,8 +169,13 @@ gsettings set org.cinnamon next-desklet-id 7
    Name=Plank
    Exec=plank
    X-GNOME-Autostart-enabled=true
+   X-GNOME-Autostart-Phase=Desktop
+   X-GNOME-Autostart-Delay=0
    NoDisplay=false
    ```
+   Ohne `X-GNOME-Autostart-Phase` startet cinnamon-session Plank erst in der letzten
+   Phase „Application“, also spürbar spät nach der Anmeldung. Mit `Desktop` erscheint
+   es gleich nach Leiste und Desktop (Sicherung der alten Datei: `plank.desktop.bak`).
 5. Dock-Einträge (`~/.config/plank/dock1/launchers/*.dockitem`, Reihenfolge = `dock-items`):
 
    | Datei | Launcher |

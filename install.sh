@@ -278,8 +278,9 @@ do_plank() {
   gset "$S" zoom-enabled true
   gset "$S" zoom-percent 200
   local auto="$HOME/.config/autostart/plank.desktop"
-  [ -f "$auto" ] || { remember_path "$auto"; mkdir -p "$(dirname "$auto")"
-    printf '[Desktop Entry]\nType=Application\nName=Plank\nExec=plank\nX-GNOME-Autostart-enabled=true\nNoDisplay=false\n' > "$auto"; }
+  # Phase „Desktop“: startet vor den übrigen Programmen statt am Ende der Anmeldung
+  remember_path "$auto"; mkdir -p "$(dirname "$auto")"
+  printf '[Desktop Entry]\nType=Application\nName=Plank\nExec=plank\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Phase=Desktop\nX-GNOME-Autostart-Delay=0\nNoDisplay=false\n' > "$auto"
 
   local L="$HOME/.config/plank/dock1/launchers" mode="${DOCK_MODE:-}"
   if [ -z "$mode" ]; then
