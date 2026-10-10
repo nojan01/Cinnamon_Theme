@@ -155,6 +155,21 @@ Wiederhergestellt als Kopien in `~/Schreibtisch` (ausführbar, `gio set … meta
 
 **Regel für den Installer:** Dock-Einträge immer auf `/usr/share/applications` bzw. `~/.local/share/applications` zeigen lassen, nie auf Dateien in `~/Schreibtisch`.
 
+## 6b. Symbol für GitHub Copilot (nur dieser Rechner)
+
+Der eigene Starter `~/.local/share/applications/Github Copilot.desktop` nutzte
+`Icon=xsi-github-symbolic`. Das ist ein einfarbiges Symbol für Leisten und wird
+auf dunklem Hintergrund fast unsichtbar. Ersetzt durch das App-Symbol aus der AppImage:
+
+```bash
+~/Downloads/GitHub-Copilot-linux-x64.AppImage --appimage-extract '*.png'
+cp "squashfs-root/GitHub Copilot.png" ~/.local/share/icons/hicolor/256x256/apps/github-copilot-app.png
+# im .desktop: Icon=github-copilot-app   (Sicherung: *.desktop.bak)
+```
+
+Für den Installer: Starter mit `Icon=*-symbolic` im Dock erkennen und den Nutzer
+auf ein farbiges Symbol hinweisen. Das GitHub-Symbol wird nicht mitgeliefert (Markenrecht).
+
 ## Sicherungen auf dem System
 
 - `~/.themes/.previous-wallpaper-uri`
