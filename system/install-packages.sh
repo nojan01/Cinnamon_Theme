@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 # Installiert Pakete für Cinnamon_Theme (als root, z. B. über pkexec oder sudo).
 # Aufruf: install-packages.sh paket1 paket2 …
 # Fehlt ein Paket in den Standardquellen, wird die passende Paketquelle ergänzt:

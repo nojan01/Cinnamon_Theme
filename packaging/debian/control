@@ -1,0 +1,19 @@
+Package: cinnamon-theme-nebel
+Version: @VERSION@
+Section: x11
+Priority: optional
+Architecture: all
+Maintainer: Norbert Jander <n.jander@posteo.de>
+Depends: bash, cinnamon, python3, python3-gi, gir1.2-gtk-3.0, python3-numpy, dconf-cli, x11-xserver-utils, fontconfig, zenity, desktop-file-utils, pkexec | policykit-1
+Recommends: mint-l-theme, mint-l-icons, mint-cursor-themes, gnome-terminal, slick-greeter, curl, gpg, software-properties-common
+Suggests: fastfetch, plank-reloaded
+Installed-Size: @SIZE@
+Homepage: https://github.com/nojan01/Cinnamon_Theme
+Description: Cinnamon-Desktop „Nebel“ – Theme, Dock, Desklets und mehr
+ Graues Cinnamon-Theme mit Mint-Grün (abgeleitet von CBlue), Hintergrundbild
+ „Linux Mint Nebel“ mit Tag/Nacht-Umschaltung, Plank-Reloaded-Dock mit
+ Sitzungsmenü, Desklets für Systeminfo (fastfetch) und Systemlast, grauer
+ Mauszeiger, Sperr- und Anmeldebildschirm sowie Terminal-Profil.
+ .
+ Nach der Installation im Menü „Nebel einrichten“ starten. Fehlende Programme
+ (auch fastfetch und Plank Reloaded samt Paketquelle) werden dabei installiert.

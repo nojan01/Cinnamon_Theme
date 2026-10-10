@@ -409,6 +409,23 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
 - Root-Skripte immer mit `/bin/bash <skript>` aufrufen, weil das Netzlaufwerk Ausführungsrechte nicht zuverlässig behält.
 - Getestet in einer Sandbox (`HOME=/tmp/…`, `GSETTINGS_BACKEND=memory`): Installation und Deinstallation hinterlassen keine Reste.
 
+## 15. Installationspaket (.deb) und Lizenzen
+
+- `bash tools/build-deb.sh` baut `dist/cinnamon-theme-nebel_<VERSION>_all.deb`. Die Version steht in `VERSION`, `dist/` ist von Git ausgeschlossen.
+- Inhalt:
+  - `/usr/share/cinnamon-theme-nebel/`: install.sh, Theme, Wallpaper, Desklets usw.
+  - `/usr/bin/nebel-einrichten`: ruft install.sh auf.
+  - `/usr/share/applications/nebel-einrichten.desktop`: Menüeintrag mit der Aktion „Nebel entfernen“.
+  - `/usr/share/doc/cinnamon-theme-nebel/copyright` im DEP-5-Format.
+- Die Einstellungen sind pro Benutzer und werden daher nicht vom Paket gesetzt, sondern über „Nebel einrichten“.
+- Depends: nur Standardpakete. fastfetch und plank-reloaded stehen unter Suggests, weil sie Fremdquellen brauchen. Diese richtet `nebel-einrichten` selbst ein (siehe 14).
+- Lizenzen (siehe `COPYRIGHT.md`):
+  - MIT, © 2026 Norbert Jander (`LICENSE`): eigene Bestandteile
+  - GPL-3.0 (`LICENSE.GPL-3.0`): `Nebel/` (abgeleitet von CBlue) und `CBlue/`
+  - OFL 1.1: JetBrains Mono
+  - Der Mauszeiger (Bibata, GPL-3.0) wird nur erzeugt und nicht mitgeliefert.
+- Copyright-Kopfzeile in allen eigenen Skripten und Desklets, Anzeige im Einrichtungsdialog und mit `nebel-einrichten --version`.
+
 ## Sicherungen auf dem System
 
 - `~/.themes/.previous-wallpaper-uri`

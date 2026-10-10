@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 # Anmeldebildschirm (slick-greeter) im Nebel-Stil. Ausführen mit: sudo ./install-lightdm.sh
 # Rückgängig: sudo ./install-lightdm.sh --uninstall
 set -e

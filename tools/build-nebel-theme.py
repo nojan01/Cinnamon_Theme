@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Norbert Jander – Skript: MIT-Lizenz; erzeugtes Theme: GPL-3.0 (wie CBlue)
 """Erzeugt das Cinnamon-Theme „Nebel“ aus CBlue (GPL-3.0, Bundy01).
 
 Kopiert CBlue/cinnamon nach Nebel/cinnamon und ersetzt die blaue Farbpalette

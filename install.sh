@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 # Cinnamon_Theme „Nebel“ – Installationsprogramm
 #
 #   ./install.sh                    Auswahl per Dialog (zenity) bzw. Rückfrage im Terminal
@@ -17,6 +18,8 @@ STATE="$HOME/.config/cinnamon-theme"
 BACKUP="$STATE/backup.tsv"
 ORIG="$STATE/orig"
 TAB=$'\t'
+VERSION="$(cat "$REPO/VERSION" 2>/dev/null || echo dev)"
+COPYRIGHT="© 2026 Norbert Jander · MIT-Lizenz (Theme „Nebel“: GPL-3.0, basiert auf CBlue)"
 
 COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank screensaver terminal lightdm)
 declare -A DESC=(
@@ -378,7 +381,7 @@ uninstall() {
   [ $plank_touched = 1 ] && start_plank
   dbus-send --session --dest=org.Cinnamon --type=method_call /org/Cinnamon org.Cinnamon.RestartCinnamon boolean:true 2>/dev/null
   log "Deinstallation abgeschlossen. Pakete (fastfetch, Plank) bleiben installiert."
-  [ $GUI = 1 ] && zenity --info --width=380 --text="Cinnamon_Theme wurde entfernt." 2>/dev/null
+  [ $GUI = 1 ] && zenity --info --width=380 --title="Nebel" --text="Nebel wurde entfernt." 2>/dev/null
   exit 0
 }
 
@@ -391,7 +394,8 @@ while [ $# -gt 0 ]; do
     --components) shift; IFS=, read -r -a SELECTED <<< "$1" ;;
     --dock) shift; DOCK_MODE="$1" ;;
     --no-gui) GUI=0; NO_GUI=1 ;;
-    -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -v|--version) echo "Cinnamon_Theme Nebel $VERSION"; echo "$COPYRIGHT"; exit 0 ;;
+    -h|--help) sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "Unbekannte Option: $1" ;;
   esac
   shift
@@ -407,8 +411,8 @@ if [ $ALL = 1 ]; then
 elif [ ${#SELECTED[@]} -eq 0 ]; then
   if [ $GUI = 1 ]; then
     args=(); for c in "${COMPONENTS[@]}"; do args+=(TRUE "$c" "${DESC[$c]}"); done
-    out=$(zenity --list --checklist --title="Cinnamon_Theme „Nebel“ installieren" \
-      --text=$'Bausteine auswählen. Vorherige Einstellungen werden gesichert;\nrückgängig mit  install.sh --uninstall' \
+    out=$(zenity --list --checklist --title="Nebel $VERSION einrichten" \
+      --text="Bausteine auswählen. Vorherige Einstellungen werden gesichert;"$'\n'"rückgängig mit „Nebel entfernen“ bzw. --uninstall."$'\n\n'"<small>$COPYRIGHT</small>" \
       --width=620 --height=560 --column="" --column="Baustein" --column="Beschreibung" \
       --separator=, "${args[@]}" 2>/dev/null) || exit 0
     IFS=, read -r -a SELECTED <<< "$out"
@@ -435,12 +439,12 @@ if [ $NEED_RESTART = 1 ] || selected theme; then
     org.Cinnamon.RestartCinnamon boolean:true 2>/dev/null || warn "Bitte Cinnamon mit Strg+Alt+Esc neu starten"
 fi
 
-msg="Installation abgeschlossen."
+msg="Nebel $VERSION ist eingerichtet."
 [ ${#WARNINGS[@]} -gt 0 ] && msg+=$'\n\nHinweise:\n'"$(printf -- '- %s\n' "${WARNINGS[@]}")"
 for f in "$HOME"/.local/share/applications/*.desktop; do
   grep -q '^Icon=.*-symbolic$' "$f" 2>/dev/null && [ -f "$HOME/.config/plank/dock1/launchers/$(basename "$f" .desktop).dockitem" ] \
     && msg+=$'\n'"- $(basename "$f"): einfarbiges Symbol, im Dock evtl. schlecht sichtbar"
 done
 log "$msg"
-[ $GUI = 1 ] && zenity --info --width=460 --title="Cinnamon_Theme" --text="$msg" 2>/dev/null
+[ $GUI = 1 ] && zenity --info --width=460 --title="Nebel $VERSION" --text="$msg"$'\n\n'"<small>$COPYRIGHT</small>" 2>/dev/null
 exit 0

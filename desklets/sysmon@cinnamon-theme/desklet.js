@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 const St = imports.gi.St;
 const GLib = imports.gi.GLib;
 const Clutter = imports.gi.Clutter;

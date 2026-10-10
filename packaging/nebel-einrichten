@@ -1,0 +1,3 @@
+#!/bin/bash
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz
+exec /bin/bash /usr/share/cinnamon-theme-nebel/install.sh "$@"

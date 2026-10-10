@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+  command -v update-desktop-database >/dev/null && update-desktop-database -q /usr/share/applications || true
+  echo "Nebel ist installiert. Zum Einrichten im Menü „Nebel einrichten“ starten."
+fi
+exit 0

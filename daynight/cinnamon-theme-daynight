@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 # Setzt das Nebel-Wallpaper passend zur Tageszeit (Tag 07:00–18:59, sonst Nacht).
 # Optional: CINNAMON_THEME_DAY_START / CINNAMON_THEME_NIGHT_START (Stunde) in
 # ~/.config/cinnamon-theme/daynight.conf

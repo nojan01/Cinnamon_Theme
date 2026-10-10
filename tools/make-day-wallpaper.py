@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 """Erzeugt aus den Nebel-Wallpapern eine hellere Tag-Variante (*_Tag.jpg)."""
 from pathlib import Path
 from PIL import Image, ImageEnhance

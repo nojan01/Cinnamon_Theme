@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 """Erzeugt den Mauszeiger „Nebel-Cursor“: Bibata-Modern-Classic mit dunkelgrauer
 statt schwarzer Füllung (weißer Rand bleibt). Quelle: Paket mint-cursor-themes.
 

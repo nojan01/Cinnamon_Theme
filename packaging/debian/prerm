@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+if [ "$1" = remove ]; then
+  echo "Hinweis: Eigene Einstellungen vorher mit „Nebel entfernen“ (nebel-einrichten --uninstall) zurücksetzen."
+fi
+exit 0

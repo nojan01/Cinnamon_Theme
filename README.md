@@ -5,10 +5,20 @@ Cinnamon-Desktop-Theme für Cinnamon 6.6, weiterentwickelt aus **CBlue 4.0**.
 ## Herkunft und Lizenz
 
 - Ausgangsthema: [CBlue](https://github.com/linuxmint/cinnamon-spices-themes/tree/master/CBlue) von Bundy01 (Cinnamon Spices), inspiriert von CBlack (cloweling).
-- Lizenz: GPL-3.0 (siehe `LICENSE`). Abgeleitete Versionen stehen ebenfalls unter GPL-3.0.
+- Copyright © 2026 Norbert Jander. Eigene Bestandteile: MIT (`LICENSE`).
+- Das Theme `Nebel/` ist von CBlue abgeleitet und steht daher unter GPL-3.0 (`LICENSE.GPL-3.0`); Schrift JetBrains Mono: SIL OFL 1.1. Übersicht: `COPYRIGHT.md`.
 - Original-Dokumentation (Wallpaper, Conky, Plank): `CBlue/README.upstream.md`.
 
 ## Installation
+
+**Paket (empfohlen):** `cinnamon-theme-nebel_<version>_all.deb` per Doppelklick installieren
+oder mit `sudo apt install ./cinnamon-theme-nebel_*_all.deb`. Danach im Menü
+**„Nebel einrichten“** starten (Befehl `nebel-einrichten`). Rechtsklick im Menü →
+„Nebel entfernen“ macht die eigenen Einstellungen rückgängig.
+
+Paket selbst bauen: `bash tools/build-deb.sh` → `dist/`.
+
+**Ohne Paket:**
 
 ```bash
 git clone https://github.com/nojan01/Cinnamon_Theme.git
