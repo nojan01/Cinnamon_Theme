@@ -1,0 +1,8 @@
+{
+    "uuid": "fastfetch@cinnamon-theme",
+    "name": "Fastfetch-Systeminfo",
+    "description": "Uhrzeit, Datum und die Ausgabe von fastfetch auf dem Schreibtisch",
+    "icon": "utilities-system-monitor",
+    "prevent-decorations": true,
+    "max-instances": "3"
+}

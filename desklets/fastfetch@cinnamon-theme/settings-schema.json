@@ -1,0 +1,56 @@
+{
+    "head": {
+        "type": "header",
+        "description": "Darstellung"
+    },
+    "font-size": {
+        "type": "spinbutton",
+        "default": 10,
+        "min": 7,
+        "max": 20,
+        "step": 1,
+        "units": "pt",
+        "description": "Schriftgröße der Systeminfo"
+    },
+    "clock-size": {
+        "type": "spinbutton",
+        "default": 40,
+        "min": 16,
+        "max": 96,
+        "step": 2,
+        "units": "pt",
+        "description": "Schriftgröße der Uhrzeit"
+    },
+    "show-seconds": {
+        "type": "switch",
+        "default": false,
+        "description": "Sekunden anzeigen"
+    },
+    "opacity": {
+        "type": "scale",
+        "default": 30,
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "description": "Deckkraft des Hintergrunds (%)"
+    },
+    "data": {
+        "type": "header",
+        "description": "Daten"
+    },
+    "refresh-interval": {
+        "type": "spinbutton",
+        "default": 60,
+        "min": 10,
+        "max": 3600,
+        "step": 10,
+        "units": "Sekunden",
+        "description": "fastfetch aktualisieren alle"
+    },
+    "modules": {
+        "type": "entry",
+        "default": "Title:Separator:OS:Host:Kernel:Uptime:Packages:Shell:Display:DE:WM:WMTheme:Theme:Icons:Font:Cursor:CPU:GPU:Memory:Swap:Disk:LocalIp:Locale",
+        "description": "fastfetch-Module (--structure)",
+        "tooltip": "Liste der Module, getrennt durch Doppelpunkte. Übersicht: fastfetch --list-modules"
+    }
+}

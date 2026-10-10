@@ -76,6 +76,44 @@ Höhe bleibt vorerst 50 px (Original-CBlue wirkt mit ca. 24–28 px; noch offen)
    ```
    (`$HOME` wurde beim Schreiben durch den absoluten Pfad ersetzt.)
 
+## 4a. Systeminfo-Desklet (ersetzt Conky TimeFull)
+
+Conky ist **abgeschaltet**: Prozess beendet, in `~/.config/autostart/conky-timefull.desktop`
+`Hidden=true` und `X-GNOME-Autostart-enabled=false` gesetzt (Dateien bleiben für Rückbau).
+Der Installer richtet Conky (Abschnitt 4) nicht mehr ein.
+
+Stattdessen eigenes Cinnamon-Desklet `desklets/fastfetch@cinnamon-theme/`
+(mit der Maus frei verschiebbar, Rechtsklick → Einstellungen):
+
+- Oben Uhrzeit (40 pt, JetBrains Mono Light), darunter Datum in Mint-Grün
+  („Samstag, 10. Oktober 2026“), dann `fastfetch --logo none --pipe --structure …`.
+  Schlüssel grün (`#8fc46b`), Werte hellgrau; Aktualisierung alle 60 s.
+- fastfetch läuft über `bash -c '…; :'`, sonst meldet es „Shell: cinnamon“.
+- Standardmodule ohne Terminal/Terminal Font (wäre im Desklet „cinnamon“).
+- Hintergrund `rgba(30,30,30,0.30)`, Rand hellgrau, Radius 14 px; Deckkraft per Regler.
+- Voraussetzung: Paket `fastfetch` (Mint 22.3: `sudo apt install fastfetch`).
+
+Schrift **JetBrains Mono** 2.304 (SIL OFL, `fonts/JetBrainsMono/`) nach
+`~/.local/share/fonts/JetBrainsMono/`, dann `fc-cache -f`. **Cinnamon muss danach neu
+gestartet werden** (Strg+Alt+Esc bzw. `cinnamon --replace`), sonst kennt es die Schrift nicht.
+
+Installation:
+
+```bash
+cp -r desklets/fastfetch@cinnamon-theme ~/.local/share/cinnamon/desklets/
+id=$(gsettings get org.cinnamon next-desklet-id)
+gsettings set org.cinnamon enabled-desklets "['fastfetch@cinnamon-theme:$id:1375:275']"
+gsettings set org.cinnamon next-desklet-id $((id+1))
+```
+
+(Position x:y wird von Cinnamon beim Verschieben aktualisiert; der Installer sollte
+sie aus der Bildschirmbreite berechnen, z. B. rechts mit 450 px Abstand.)
+
+Vorher: `enabled-desklets` = `@as []`.
+
+Hinweis für das eigene Theme: CBlue färbt hervorgehobene Desklets rot
+(`.desklet:highlight { background-color: #aa5555 }`) → auf Grau ändern.
+
 ## 5. Dock: Plank Reloaded
 
 1. **[sudo]** Altes `plank` (0.11.89 aus Ubuntu) wurde zuerst installiert, dann durch **Plank Reloaded** ersetzt (Konflikt wird von apt aufgelöst). Installation über die offizielle PPA:

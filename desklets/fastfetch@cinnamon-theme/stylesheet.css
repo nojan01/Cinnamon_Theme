@@ -1,0 +1,24 @@
+.ff-desklet {
+    font-family: "JetBrains Mono", "Ubuntu Sans Mono", monospace;
+    background-color: rgba(30, 30, 30, 0.30);
+    border: 1px solid rgba(160, 160, 160, 0.35);
+    border-radius: 14px;
+    padding: 16px 20px;
+    color: #d6d6d6;
+}
+.ff-clock {
+    font-weight: 300;
+    color: #f0f0f0;
+}
+.ff-date {
+    color: #8fc46b;
+    padding-bottom: 6px;
+}
+.ff-rule {
+    height: 1px;
+    background-color: rgba(160, 160, 160, 0.35);
+    margin: 6px 0 10px 0;
+}
+.ff-info {
+    color: #d6d6d6;
+}
