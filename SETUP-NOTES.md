@@ -265,7 +265,7 @@ müssen also nicht mitgeliefert werden.
 
 | Bereich | Wert |
 |---|---|
-| Mauszeiger | `Bibata-Modern-Classic`, Größe 23 |
+| Mauszeiger | `Bibata-Modern-Classic`, Größe 23 → jetzt `Nebel-Cursor` (siehe 7a) |
 | Anwendungen (GTK) | `Mint-L-Dark-Grey` |
 | Symbole | `Mint-L-Grey` |
 | Schreibtisch (Cinnamon) | `CBlue` → wird später durch das eigene Theme ersetzt |
@@ -298,6 +298,18 @@ Bildlaufleistenbreite: Cinnamon schreibt sie nach `~/.config/gtk-3.0/gtk.css`
 scrollbar slider {
 	min-width: 10px;
 	min-height: 10px;}
+```
+
+### 7a. Mauszeiger „Nebel-Cursor“ (dunkelgrau mit weißem Rand)
+
+`python3 tools/build-nebel-cursor.py` erzeugt aus `/usr/share/icons/Bibata-Modern-Classic`
+den Ordner `~/.icons/Nebel-Cursor`. Die schwarze Füllung wird `#3c3c3c`, der weiße Rand
+bleibt; Symlinks werden übernommen. Benötigt `python3-numpy`.
+Die Datei wird beim Installieren erzeugt und nicht im Repository abgelegt (Bibata, GPL-3.0).
+
+```bash
+gsettings set org.cinnamon.desktop.interface cursor-theme 'Nebel-Cursor'
+gsettings set org.gnome.desktop.interface   cursor-theme 'Nebel-Cursor'
 ```
 
 ## 8. Eigenes Theme „Nebel“ (ersetzt CBlue)

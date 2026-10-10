@@ -109,7 +109,7 @@ start_plank() { command -v plank >/dev/null && setsid plank >/dev/null 2>&1 < /d
 BASE_PKGS=(python3 python3-gi gir1.2-gtk-3.0 dconf-cli x11-xserver-utils fontconfig zenity desktop-file-utils)
 declare -A PKGS=(
   [fonts]="fontconfig"
-  [appearance]="mint-l-theme mint-l-icons mint-cursor-themes"
+  [appearance]="mint-l-theme mint-l-icons mint-cursor-themes python3-numpy"
   [daynight]="systemd"
   [desklets]="fastfetch"
   [session]="python3-gi gir1.2-gtk-3.0 cinnamon-session"
@@ -179,8 +179,12 @@ do_daynight() {
 do_appearance() {
   log "Mauszeiger, Anwendungen, Symbole"
   local s
+  local cursor='Bibata-Modern-Classic'
+  remember_path "$HOME/.icons/Nebel-Cursor"
+  python3 "$REPO/tools/build-nebel-cursor.py" "$HOME/.icons/Nebel-Cursor" >/dev/null \
+    && cursor='Nebel-Cursor' || warn "Grauer Mauszeiger konnte nicht erzeugt werden – Bibata schwarz bleibt"
   for s in org.cinnamon.desktop.interface org.gnome.desktop.interface; do
-    gset $s cursor-theme 'Bibata-Modern-Classic'
+    gset $s cursor-theme "$cursor"
     gset $s gtk-theme 'Mint-L-Dark-Grey'
     gset $s icon-theme 'Mint-L-Grey'
   done
