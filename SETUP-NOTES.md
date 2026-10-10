@@ -107,13 +107,26 @@ Höhe bleibt vorerst 50 px (Original-CBlue wirkt mit ca. 24–28 px; noch offen)
    | `org.gnome.Screenshot.dockitem` | `file:///usr/share/applications/org.gnome.Screenshot.desktop` |
    | `trash.dockitem` | `docklet://trash` |
 
-   **[maschinenspezifisch]** Die App-Liste ist persönlich; der Installer sollte nur vorhandene `.desktop`-Dateien eintragen.
+   **[maschinenspezifisch]** Diese App-Liste ist die persönliche Belegung auf diesem Rechner, nicht die Installer-Vorgabe (siehe 5a).
    Minimales Format einer `.dockitem`-Datei:
    ```ini
    [PlankDockItemPreferences]
    Launcher=file:///usr/share/applications/xyz.desktop
    ```
    Änderungen an `.dockitem`-Dateien nur bei beendetem Plank vornehmen, sonst überschreibt Plank sie.
+
+### 5a. Standardbelegung des Docks für das Installationsprogramm
+
+Festgelegt in `plank/default-apps.conf` (Vorlagen in `plank/launchers/`). Bei der Installation soll das Dock enthalten:
+
+1. Anwendungsmenü (`docklet://applications`) mit Linux-Mint-Logo `linuxmint-logo-badge`
+2. Dateimanager Nemo (`nemo.desktop`)
+3. Firefox (`firefox.desktop`, Alternativen: Snap/Flatpak)
+4. Terminal (`org.gnome.Terminal.desktop`, Alternativen: xfce4-/mate-terminal, Ptyxis)
+5. Papierkorb (`docklet://trash`)
+
+Ablauf im Installer: Plank beenden → vorhandene `~/.config/plank/dock1/launchers` sichern → Einträge gemäß `default-apps.conf` erzeugen (nur vorhandene `.desktop`-Dateien) → `dock-items` in dieser Reihenfolge setzen → Plank starten.
+Offen: Bestehendes Dock des Nutzers ersetzen oder nur fehlende Standardeinträge ergänzen (beim Installer abfragen).
 
 ## 6. Desktop-Starter wiederhergestellt
 

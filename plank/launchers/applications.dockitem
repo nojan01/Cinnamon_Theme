@@ -1,0 +1,5 @@
+[PlankDockItemPreferences]
+Launcher=docklet://applications
+
+[DockyApplicationsPreferences]
+CustomIcon=linuxmint-logo-badge
