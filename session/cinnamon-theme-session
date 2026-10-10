@@ -52,6 +52,30 @@ def error(msg):
         print(msg, file=sys.stderr)
 
 
+DOCK_GAP = 12
+
+
+def place_above_dock(win, Gdk):
+    """Fenster knapp über dem Dock, waagerecht am Mauszeiger ausrichten."""
+    display = Gdk.Display.get_default()
+    seat = display.get_default_seat()
+    _screen, px, py = seat.get_pointer().get_position()
+    monitor = display.get_monitor_at_point(px, py)
+    geo = monitor.get_geometry()
+    work = monitor.get_workarea()
+    w, h = win.get_size()
+
+    # Plank reserviert seinen Platz (Strut) nur, wenn es nicht ausgeblendet wird.
+    bottom = work.y + work.height
+    if bottom >= geo.y + geo.height:
+        bottom = min(bottom, py - 40)
+    y = bottom - h - DOCK_GAP
+    x = px - w // 2
+    x = max(work.x + DOCK_GAP, min(x, work.x + work.width - w - DOCK_GAP))
+    y = max(work.y + DOCK_GAP, y)
+    win.move(x, y)
+
+
 def show_dialog():
     import gi
     gi.require_version("Gtk", "3.0")
@@ -66,7 +90,7 @@ def show_dialog():
 
     win = Gtk.Window(title="Sitzung")
     win.get_style_context().add_class("session-menu")
-    win.set_position(Gtk.WindowPosition.CENTER)
+    win.set_position(Gtk.WindowPosition.NONE)
     win.set_resizable(False)
     win.set_keep_above(True)
     win.set_skip_taskbar_hint(True)
@@ -109,6 +133,7 @@ def show_dialog():
     box.pack_start(bottom, False, False, 0)
 
     win.show_all()
+    place_above_dock(win, Gdk)
     cancel.grab_focus()
     Gtk.main()
 
