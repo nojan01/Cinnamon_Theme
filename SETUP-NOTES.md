@@ -24,12 +24,27 @@ Legende: **[sudo]** = benötigt Root-Rechte · **[maschinenspezifisch]** = muss 
 - Installieren: `CBlue/` nach `~/.themes/CBlue` kopieren.
 - Aktivieren: `gsettings set org.cinnamon.theme name 'CBlue'`
 
-## 2. Wallpaper
+## 2. Wallpaper „Linux Mint Nebel“
+
+Zwei Größen im Repo unter `wallpapers/` (JPEG, sRGB, ohne Alpha, 16:9):
+
+| Datei | Auflösung | Einsatz |
+|---|---|---|
+| `Linux_Mint_Nebel_3840x2160.jpg` | 3840×2160 (4K) | Standard, bis 4K-Monitore |
+| `Linux_Mint_Nebel_5120x2880.jpg` | 5120×2880 (5K) | Monitore breiter als 3840 px oder höher als 2160 px |
+
+Installer: Bildschirmauflösung ermitteln (z. B. `xrandr --current`) und passende
+Größe wählen; beide nach `~/.local/share/backgrounds/Cinnamon_Theme/` kopieren.
+Auf diesem Rechner (1828×1166) ist die 4K-Variante installiert:
 
 ```bash
+mkdir -p ~/.local/share/backgrounds/Cinnamon_Theme
+cp wallpapers/Linux_Mint_Nebel_3840x2160.jpg ~/.local/share/backgrounds/Cinnamon_Theme/
 gsettings set org.cinnamon.desktop.background picture-options 'zoom'
-gsettings set org.cinnamon.desktop.background picture-uri "file://$HOME/.themes/CBlue/cinnamon/Wallpaper.png"
+gsettings set org.cinnamon.desktop.background picture-uri "file://$HOME/.local/share/backgrounds/Cinnamon_Theme/Linux_Mint_Nebel_3840x2160.jpg"
 ```
+
+(Vorher: CBlue-Original `~/.themes/CBlue/cinnamon/Wallpaper.png`, 1920×1080.)
 
 ## 3. Cinnamon-Leiste oben
 
