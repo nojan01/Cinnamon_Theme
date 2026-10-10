@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Cinnamon_Theme Nebel
 Upstream-Contact: Norbert Jander <n.jander@posteo.de>
-Source: https://github.com/nojan01/Cinnamon_Theme
+Source: https://www.little-tools.de
 
 Files: *
 Copyright: 2026 Norbert Jander

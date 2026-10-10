@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Nebel: Favoriten ins Dock
+Comment=Neue Favoriten des Mint-Menüs automatisch ins Plank-Dock aufnehmen
+Exec=nebel-dock-add --watch-favorites
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

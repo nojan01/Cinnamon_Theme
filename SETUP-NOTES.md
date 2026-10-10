@@ -426,6 +426,25 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
   - Der Mauszeiger (Bibata, GPL-3.0) wird nur erzeugt und nicht mitgeliefert.
 - Copyright-Kopfzeile in allen eigenen Skripten und Desklets, Anzeige im Einrichtungsdialog und mit `nebel-einrichten --version`.
 
+## 16. Mint-Menü → Dock
+
+Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
+übergeben (nur internes Clutter-Drag-and-drop). Ersatz:
+
+- **Rechtsklick „Zum Dock hinzufügen“** – Cinnamon-Erweiterung
+  `extensions/dock-menu@cinnamon-theme` (installiert nach
+  `~/.local/share/cinnamon/extensions/`, aktiviert in
+  `org.cinnamon enabled-extensions`). Sie ergänzt `populateMenu` der
+  Programmknöpfe des Menü-Applets `menu@cinnamon.org`.
+- **Favoriten → Dock** – `~/.local/bin/nebel-dock-add --watch-favorites`
+  (Autostart `~/.config/autostart/nebel-dock-sync.desktop`) beobachtet
+  `org.cinnamon favorite-apps`; neu hinzugefügte Favoriten kommen ins Dock.
+  Bekannter Stand: `~/.config/cinnamon-theme/dock-sync.json`. Entfernen aus den
+  Favoriten lässt das Dock unverändert.
+- Beides nutzt die D-Bus-Schnittstelle von Plank:
+  `net.launchpad.plank /net/launchpad/plank/dock1 net.launchpad.plank.Items.Add(file-URI)`.
+- Von Hand: `nebel-dock-add org.gnome.Calculator.desktop`.
+
 ## Sicherungen auf dem System
 
 - `~/.themes/.previous-wallpaper-uri`

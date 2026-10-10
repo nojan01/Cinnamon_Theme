@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
+"""Programme ins Plank-Dock aufnehmen.
+
+  nebel-dock-add <name.desktop | /pfad/name.desktop>   ein Programm hinzufügen
+  nebel-dock-add --watch-favorites                       neue Favoriten des Mint-Menüs
+                                                         automatisch ins Dock legen
+"""
+import json
+import sys
+from pathlib import Path
+
+import gi
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib
+
+STATE = Path(GLib.get_user_config_dir()) / "cinnamon-theme" / "dock-sync.json"
+
+
+def plank():
+    return Gio.DBusProxy.new_for_bus_sync(
+        Gio.BusType.SESSION, Gio.DBusProxyFlags.DO_NOT_AUTO_START, None,
+        "net.launchpad.plank", "/net/launchpad/plank/dock1", "net.launchpad.plank.Items", None)
+
+
+def resolve(arg):
+    info = (Gio.DesktopAppInfo.new_from_filename(arg) if "/" in arg
+            else Gio.DesktopAppInfo.new(arg))
+    return info.get_filename() if info else None
+
+
+def add(arg):
+    path = resolve(arg)
+    if not path:
+        print(f"Programm nicht gefunden: {arg}", file=sys.stderr)
+        return False
+    uri = Gio.File.new_for_path(path).get_uri()
+    try:
+        p = plank()
+        present = p.call_sync("GetPersistentApplications", None, 0, 2000, None).unpack()[0]
+        if uri in present or any(Path(Gio.File.new_for_uri(u).get_path() or "").name == Path(path).name
+                                 for u in present):
+            return True
+        p.call_sync("Add", GLib.Variant("(s)", (uri,)), 0, 3000, None)
+        return True
+    except GLib.Error as e:
+        print(f"Plank nicht erreichbar: {e.message}", file=sys.stderr)
+        return False
+
+
+def watch_favorites():
+    settings = Gio.Settings.new("org.cinnamon")
+    try:
+        known = set(json.loads(STATE.read_text()))
+    except (OSError, ValueError):
+        known = set(settings.get_strv("favorite-apps"))  # erster Start: bestehende Favoriten nicht übernehmen
+
+    def save(cur):
+        STATE.parent.mkdir(parents=True, exist_ok=True)
+        STATE.write_text(json.dumps(sorted(cur)))
+
+    def changed(*_):
+        nonlocal known
+        cur = set(settings.get_strv("favorite-apps"))
+        for app in cur - known:
+            add(app)
+        known = cur
+        save(cur)
+
+    changed()
+    settings.connect("changed::favorite-apps", changed)
+    GLib.MainLoop().run()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == "--watch-favorites":
+        watch_favorites()
+    elif len(sys.argv) >= 2 and not sys.argv[1].startswith("-"):
+        sys.exit(0 if all([add(a) for a in sys.argv[1:]]) else 1)
+    else:
+        print(__doc__.strip())
+        sys.exit(2)

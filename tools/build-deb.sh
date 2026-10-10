@@ -9,7 +9,7 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 ROOT="$WORK/root"; SHARE="$ROOT/usr/share/$PKG"; DOC="$ROOT/usr/share/doc/$PKG"
 
 mkdir -p "$SHARE" "$DOC" "$ROOT/usr/bin" "$ROOT/usr/share/applications" "$ROOT/DEBIAN"
-cp -r "$REPO"/{install.sh,VERSION,LICENSE,LICENSE.GPL-3.0,COPYRIGHT.md,Nebel,wallpapers,desklets,session,plank,daynight,terminal,system,fonts} "$SHARE/"
+cp -r "$REPO"/{install.sh,VERSION,LICENSE,LICENSE.GPL-3.0,COPYRIGHT.md,Nebel,wallpapers,desklets,session,plank,dock,extensions,daynight,terminal,system,fonts} "$SHARE/"
 mkdir -p "$SHARE/tools"; cp "$REPO/tools/build-nebel-cursor.py" "$SHARE/tools/"
 cp "$REPO/packaging/nebel-einrichten" "$ROOT/usr/bin/"
 cp "$REPO/packaging/nebel-einrichten.desktop" "$ROOT/usr/share/applications/"
@@ -22,7 +22,7 @@ printf '%s (%s) stable; urgency=low\n\n  * Version %s\n\n -- Norbert Jander <n.j
 find "$ROOT" -type d -exec chmod 755 {} +
 find "$ROOT" -type f -exec chmod 644 {} +
 chmod 755 "$ROOT/usr/bin/nebel-einrichten" "$SHARE/install.sh" "$SHARE"/system/*.sh \
-  "$SHARE/session/cinnamon-theme-session" "$SHARE/daynight/cinnamon-theme-daynight" "$SHARE/tools/build-nebel-cursor.py"
+  "$SHARE/session/cinnamon-theme-session" "$SHARE/daynight/cinnamon-theme-daynight" "$SHARE/tools/build-nebel-cursor.py" "$SHARE/dock/nebel-dock-add"
 
 SIZE=$(du -sk --exclude=DEBIAN "$ROOT" | cut -f1)
 sed -e "s/@VERSION@/$VERSION/" -e "s/@SIZE@/$SIZE/" "$REPO/packaging/debian/control" > "$ROOT/DEBIAN/control"

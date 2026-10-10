@@ -21,7 +21,7 @@ TAB=$'\t'
 VERSION="$(cat "$REPO/VERSION" 2>/dev/null || echo dev)"
 COPYRIGHT="© 2026 Norbert Jander · MIT-Lizenz (Theme „Nebel“: GPL-3.0, basiert auf CBlue)"
 
-COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank screensaver terminal lightdm)
+COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank dockmenu screensaver terminal lightdm)
 declare -A DESC=(
   [fonts]="Schrift JetBrains Mono"
   [theme]="Cinnamon-Theme „Nebel“"
@@ -32,6 +32,7 @@ declare -A DESC=(
   [desklets]="Desklets Systeminfo (fastfetch) und Systemlast"
   [session]="Sitzungsmenü (Herunterfahren, Neustart …)"
   [plank]="Dock Plank mit Theme Nebel-Grau"
+  [dockmenu]="Mint-Menü → Dock (Rechtsklick „Zum Dock hinzufügen“, Favoriten)"
   [screensaver]="Sperrbildschirm mit JetBrains Mono"
   [terminal]="Terminal-Profil „Nebel“"
   [lightdm]="Anmeldebildschirm (root)"
@@ -326,6 +327,27 @@ do_plank() {
   start_plank
 }
 
+do_dockmenu() {
+  log "Mint-Menü → Dock"
+  put "$REPO/dock/nebel-dock-add" "$HOME/.local/bin/nebel-dock-add" 755
+  put "$REPO/extensions/dock-menu@cinnamon-theme" "$HOME/.local/share/cinnamon/extensions/dock-menu@cinnamon-theme"
+  local auto="$HOME/.config/autostart/nebel-dock-sync.desktop"
+  remember_path "$auto"; mkdir -p "$(dirname "$auto")"
+  sed "s|Exec=nebel-dock-add|Exec=$HOME/.local/bin/nebel-dock-add|" "$REPO/dock/nebel-dock-sync.desktop" > "$auto"
+  local cur new
+  cur=$(gsettings get org.cinnamon enabled-extensions)
+  new=$(python3 -c "
+import ast,sys
+l=ast.literal_eval(sys.argv[1].replace('@as ',''))
+if 'dock-menu@cinnamon-theme' not in l: l.append('dock-menu@cinnamon-theme')
+print(repr(l))" "$cur")
+  gset org.cinnamon enabled-extensions "$new"
+  mark dockmenu
+  if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && ! pgrep -f 'nebel-dock-add --watch-favorites' >/dev/null; then
+    setsid "$HOME/.local/bin/nebel-dock-add" --watch-favorites >/dev/null 2>&1 < /dev/null &
+  fi
+}
+
 do_screensaver() {
   log "Sperrbildschirm"
   local S=org.cinnamon.desktop.screensaver
@@ -371,6 +393,7 @@ uninstall() {
       mark)
         case "$a" in
           daynight) systemctl --user disable --now cinnamon-theme-daynight.timer >/dev/null 2>&1 ;;
+          dockmenu) local pid; for pid in $(pgrep -f 'nebel-dock-add --watch-favorites'); do kill "$pid"; done ;;
           lightdm)  as_root /bin/bash "$REPO/system/install-lightdm.sh" --uninstall || warn "Anmeldebildschirm nicht zurückgesetzt" ;;
         esac ;;
     esac
