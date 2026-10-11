@@ -495,7 +495,31 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
   ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 
+## 18. RDP mit Grafikbeschleunigung (glamor) – nur dieser Rechner
+
+Nicht Teil von install.sh/.deb (betrifft den Systemtreiber von xrdp).
+Der selbst gebaute `xorgxrdp` 0.10.5 war ohne glamor kompiliert → RDP-Sitzungen
+renderten per Software (llvmpipe). Neu gebaut mit glamor (Intel RPL-P über
+`/dev/dri/renderD128`, `xorg.conf` unverändert):
+
+```bash
+sudo apt install -y libgbm-dev libegl-dev
+git -C ~/Downloads/xorgxrdp archive v0.10.5 | tar -x -C /tmp/xorgxrdp-glamor
+cd /tmp/xorgxrdp-glamor && ./bootstrap && ./configure --enable-glamor && make -j
+sudo make install        # vorher Sicherung der Paketdateien nach /var/backups
+```
+
+Danach RDP **abmelden** und neu anmelden. Prüfen:
+`glxinfo -B` → „Accelerated: yes“, „Mesa Intel(R) Graphics (RPL-P)“;
+`~/.xorgxrdp.10.log` → „use glamor set“.
+
+Rückweg: `sudo tar -xzf /var/backups/xorgxrdp-ohne-glamor-20261011-164329.tgz -C /`
+(oder alte .deb aus `~/Downloads/xorgxrdp` mit `dpkg -i`). Achtung: ein
+xorgxrdp-Update aus dem Paket würde glamor wieder entfernen.
+
 ## Sicherungen auf dem System
+
+- `/var/backups/xorgxrdp-ohne-glamor-20261011-164329.tgz` – xorgxrdp-Treiber vor glamor (Abschnitt 18)
 
 - `~/.themes/.previous-wallpaper-uri`
 - `~/.themes/.previous-panel-settings`
