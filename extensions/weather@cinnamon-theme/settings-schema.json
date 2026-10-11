@@ -1,0 +1,33 @@
+{
+    "h-effects": { "type": "header", "description": "Effekte" },
+    "active": { "type": "switch", "default": true, "description": "Wettereffekte eingeschaltet" },
+    "toggle-key": { "type": "keybinding", "default": "<Super><Alt>w", "description": "Tastenkürzel Ein/Aus" },
+    "rain": { "type": "switch", "default": true, "description": "Regenschauer" },
+    "leaves": { "type": "switch", "default": true, "description": "Blätter im Wind" },
+    "snow": { "type": "switch", "default": true, "description": "Schneefall" },
+    "seasonal": { "type": "switch", "default": true, "description": "Nach Jahreszeit",
+                  "tooltip": "Blätter von September bis November, Schnee von Dezember bis Februar, Regen von März bis November." },
+
+    "h-schedule": { "type": "header", "description": "Zeitplan" },
+    "pause-min": { "type": "spinbutton", "default": 4, "min": 1, "max": 120, "step": 1, "units": "Minuten", "description": "Pause mindestens" },
+    "pause-max": { "type": "spinbutton", "default": 15, "min": 1, "max": 240, "step": 1, "units": "Minuten", "description": "Pause höchstens" },
+    "duration-min": { "type": "spinbutton", "default": 40, "min": 10, "max": 600, "step": 10, "units": "Sekunden", "description": "Dauer mindestens" },
+    "duration-max": { "type": "spinbutton", "default": 120, "min": 10, "max": 1200, "step": 10, "units": "Sekunden", "description": "Dauer höchstens" },
+
+    "h-look": { "type": "header", "description": "Darstellung" },
+    "intensity": { "type": "scale", "default": 100, "min": 25, "max": 300, "step": 25, "description": "Stärke (%)" },
+    "size": { "type": "scale", "default": 100, "min": 50, "max": 250, "step": 10, "description": "Größe (%)" },
+    "wind": { "type": "scale", "default": 40, "min": -100, "max": 100, "step": 10, "description": "Wind (links ← → rechts)" },
+    "fps": { "type": "spinbutton", "default": 30, "min": 10, "max": 60, "step": 5, "units": "Bilder/s", "description": "Bildrate" },
+
+    "h-test": { "type": "header", "description": "Jetzt auslösen" },
+    "btn-rain": { "type": "button", "description": "Regenschauer", "callback": "startRain" },
+    "btn-leaves": { "type": "button", "description": "Blätter", "callback": "startLeaves" },
+    "btn-snow": { "type": "button", "description": "Schnee", "callback": "startSnow" },
+    "btn-stop": { "type": "button", "description": "Beenden", "callback": "stop" },
+
+    "h-behaviour": { "type": "header", "description": "Verhalten" },
+    "pause-covered": { "type": "switch", "default": true, "description": "Anhalten, wenn ein Fenster maximiert oder im Vollbild ist" },
+    "show-in-rdp": { "type": "switch", "default": false, "description": "Auch in RDP-Sitzungen anzeigen",
+                     "tooltip": "Ohne Grafikkarte (RDP) berechnet der Prozessor jedes Bild – das kostet spürbar Leistung." }
+}

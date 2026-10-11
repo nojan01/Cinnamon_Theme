@@ -21,7 +21,7 @@ TAB=$'\t'
 VERSION="$(cat "$REPO/VERSION" 2>/dev/null || echo dev)"
 COPYRIGHT="© 2026 Norbert Jander · MIT-Lizenz (Theme „Nebel“: GPL-3.0, basiert auf CBlue)"
 
-COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank dockmenu screensaver terminal lightdm)
+COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank dockmenu weather screensaver terminal lightdm)
 declare -A DESC=(
   [fonts]="Schrift JetBrains Mono"
   [theme]="Cinnamon-Theme „Nebel“"
@@ -33,6 +33,7 @@ declare -A DESC=(
   [session]="Sitzungsmenü (Herunterfahren, Neustart …)"
   [plank]="Dock Plank mit Theme Nebel-Grau"
   [dockmenu]="Mint-Menü → Dock (Rechtsklick „Zum Dock hinzufügen“, Favoriten)"
+  [weather]="Wetter auf dem Desktop: Regen, Blätter, Schnee (abschaltbar)"
   [screensaver]="Sperrbildschirm mit JetBrains Mono"
   [terminal]="Terminal-Profil „Nebel“"
   [lightdm]="Anmeldebildschirm (root)"
@@ -348,6 +349,20 @@ print(repr(l))" "$cur")
   if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && ! pgrep -f 'nebel-dock-add --watch-favorites' >/dev/null; then
     setsid "$HOME/.local/bin/nebel-dock-add" --watch-favorites >/dev/null 2>&1 < /dev/null &
   fi
+}
+
+do_weather() {
+  log "Wetter auf dem Desktop"
+  put "$REPO/extensions/weather@cinnamon-theme" "$HOME/.local/share/cinnamon/extensions/weather@cinnamon-theme"
+  local cur new
+  cur=$(gsettings get org.cinnamon enabled-extensions)
+  new=$(python3 -c "
+import ast,sys
+l=ast.literal_eval(sys.argv[1].replace('@as ',''))
+l=[x for x in l if x!='snow@cinnamon-theme']
+if 'weather@cinnamon-theme' not in l: l.append('weather@cinnamon-theme')
+print(repr(l))" "$cur")
+  gset org.cinnamon enabled-extensions "$new"
 }
 
 do_screensaver() {

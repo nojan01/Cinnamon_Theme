@@ -465,22 +465,32 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   `net.launchpad.plank /net/launchpad/plank/dock1 net.launchpad.plank.Items.Add(file-URI)`.
 - Von Hand: `nebel-dock-add org.gnome.Calculator.desktop`.
 
-## 17. Prototyp: Schneefall (bewegte Elemente)
+## 17. Wetter auf dem Desktop (Regen, Blätter, Schnee)
 
-- Cinnamon-Erweiterung `extensions/snow@cinnamon-theme` (noch nicht in `install.sh`).
-  Installation von Hand: nach `~/.local/share/cinnamon/extensions/` kopieren und
-  `snow@cinnamon-theme` in `org.cinnamon enabled-extensions` aufnehmen.
-- Eine Clutter-Ebene direkt über `global.background_actor` in `global.window_group`,
-  also über dem Hintergrundbild und unter Desktop-Symbolen, Desklets und Fenstern.
-  Flocken sind kleine runde `St.Widget`s mit Tiefe (Größe, Helligkeit, Tempo) und
-  seitlichem Pendeln.
-- Einstellungen (Systemeinstellungen → Erweiterungen → Zahnrad): Anzahl,
-  Geschwindigkeit, Größe, Wind, Bildrate, Anhalten bei maximiertem/Vollbild-Fenster,
-  Anzeige in RDP-Sitzungen (Standard aus).
-- Leistung: Unter xrdp rendert Cinnamon per Software (llvmpipe); jedes Bild kostet
-  dann mehrere Prozessorkerne. Am Rechner selbst übernimmt die Intel-Grafik das.
-- Ideen: gleiche Technik für Regen, Laub, Glühwürmchen; Kopplung an Jahreszeit
-  oder Tag/Nacht-Timer.
+- Cinnamon-Erweiterung `extensions/weather@cinnamon-theme` „Nebel: Wetter“, Baustein
+  `weather` in `install.sh`. Ersetzt den Schneefall-Prototyp `snow@cinnamon-theme`
+  (wird beim Einrichten aus `enabled-extensions` entfernt).
+- Ablauf: Nach einer zufälligen Pause (Standard 4–15 min) startet ein Ereignis mit
+  zufälliger Dauer (40–120 s), sanftem Ein- und Ausblenden und schwankender Stärke.
+  Ereignisse: Regenschauer (Desktop wird leicht abgedunkelt), Blätter im Wind
+  (Böen, Taumeln, Drehen), Schneefall; gelegentlich Regen + Blätter („Herbststurm“).
+- „Nach Jahreszeit“ (Standard an): Blätter Sep–Nov, Schnee Dez–Feb, Regen März–Nov.
+- Zwischen den Ereignissen läuft kein Timer – die Erweiterung kostet dann nichts.
+- **Abschalten:** Hauptschalter „Wettereffekte eingeschaltet“, einzelne Schalter je
+  Effekt, Tastenkürzel **Super+Alt+W** (Ein/Aus mit Meldung) oder die Erweiterung in
+  Systemeinstellungen → Erweiterungen deaktivieren. Dort auch Knöpfe zum sofortigen
+  Auslösen bzw. Beenden.
+- **Programme bleiben effektfrei:** Die Ebene liegt in `global.window_group` direkt
+  unter dem untersten Fenster (über Hintergrund, Desktop-Symbolen und Desklets).
+  Muffin sortiert bei jedem Stapelwechsel nur Fenster und Desklets ein, fremde Ebenen
+  rutschen nach oben (beim Prototyp lag der Schnee deshalb über dem Copilot-Fenster).
+  Lösung: bei `global.display` „restacked“ (über `Meta.later_add`) und während eines
+  Ereignisses jede Sekunde neu einsortieren.
+- Weitere Einstellungen: Stärke, Größe, Wind, Bildrate, Anhalten bei
+  maximiertem/Vollbild-Fenster, Anzeige in RDP-Sitzungen (Standard aus; unter xrdp
+  rendert llvmpipe per Prozessor).
+- Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
+  ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 
 ## Sicherungen auf dem System
 

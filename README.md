@@ -34,7 +34,8 @@ Schritte und für den Anmeldebildschirm wird das Passwort abgefragt.
 
 Bausteine: Schrift JetBrains Mono, Cinnamon-Theme „Nebel“, Hintergrundbild,
 Tag/Nacht-Hintergrund, Darstellung (Mint-L-Grey, Bibata), Leiste, Desklets
-(Systeminfo und Systemlast), Sitzungsmenü, Dock Plank, Mint-Menü → Dock, Sperrbildschirm,
+(Systeminfo und Systemlast), Sitzungsmenü, Dock Plank, Mint-Menü → Dock, Wetter auf dem Desktop (Regen,
+Blätter, Schnee – abschaltbar mit Super+Alt+W), Sperrbildschirm,
 Terminal-Profil und Anmeldebildschirm.
 
 Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
@@ -43,7 +44,8 @@ Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
 
 - `Nebel/` – eigenes Cinnamon-Theme (erzeugt mit `tools/build-nebel-theme.py`)
 - `wallpapers/` – Hintergrundbilder 4K/5K, jeweils Nacht und Tag
-- `dock/`, `extensions/` – Programme aus dem Mint-Menü ins Dock aufnehmen
+- `dock/`, `extensions/dock-menu@…` – Programme aus dem Mint-Menü ins Dock aufnehmen
+- `extensions/weather@cinnamon-theme` – Wettereffekte auf dem Desktop
 - `desklets/`, `session/`, `plank/`, `daynight/`, `terminal/`, `system/`, `fonts/`
 - `CBlue/` – unverändertes Ausgangsthema
 - `CBlue/cinnamon/cinnamon.css` – Cinnamon-Shell-Theme
