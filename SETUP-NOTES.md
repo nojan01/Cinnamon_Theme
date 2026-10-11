@@ -465,6 +465,23 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   `net.launchpad.plank /net/launchpad/plank/dock1 net.launchpad.plank.Items.Add(file-URI)`.
 - Von Hand: `nebel-dock-add org.gnome.Calculator.desktop`.
 
+## 17. Prototyp: Schneefall (bewegte Elemente)
+
+- Cinnamon-Erweiterung `extensions/snow@cinnamon-theme` (noch nicht in `install.sh`).
+  Installation von Hand: nach `~/.local/share/cinnamon/extensions/` kopieren und
+  `snow@cinnamon-theme` in `org.cinnamon enabled-extensions` aufnehmen.
+- Eine Clutter-Ebene direkt über `global.background_actor` in `global.window_group`,
+  also über dem Hintergrundbild und unter Desktop-Symbolen, Desklets und Fenstern.
+  Flocken sind kleine runde `St.Widget`s mit Tiefe (Größe, Helligkeit, Tempo) und
+  seitlichem Pendeln.
+- Einstellungen (Systemeinstellungen → Erweiterungen → Zahnrad): Anzahl,
+  Geschwindigkeit, Größe, Wind, Bildrate, Anhalten bei maximiertem/Vollbild-Fenster,
+  Anzeige in RDP-Sitzungen (Standard aus).
+- Leistung: Unter xrdp rendert Cinnamon per Software (llvmpipe); jedes Bild kostet
+  dann mehrere Prozessorkerne. Am Rechner selbst übernimmt die Intel-Grafik das.
+- Ideen: gleiche Technik für Regen, Laub, Glühwürmchen; Kopplung an Jahreszeit
+  oder Tag/Nacht-Timer.
+
 ## Sicherungen auf dem System
 
 - `~/.themes/.previous-wallpaper-uri`

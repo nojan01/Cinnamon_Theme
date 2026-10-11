@@ -1,0 +1,11 @@
+{
+    "head": { "type": "header", "description": "Schneefall" },
+    "count": { "type": "spinbutton", "default": 90, "min": 10, "max": 400, "step": 10, "units": "Flocken", "description": "Anzahl" },
+    "speed": { "type": "scale", "default": 100, "min": 25, "max": 300, "step": 25, "description": "Geschwindigkeit (%)" },
+    "size": { "type": "scale", "default": 100, "min": 50, "max": 250, "step": 10, "description": "Größe (%)" },
+    "wind": { "type": "scale", "default": 0, "min": -100, "max": 100, "step": 10, "description": "Wind (links ← → rechts)" },
+    "fps": { "type": "spinbutton", "default": 30, "min": 10, "max": 60, "step": 5, "units": "Bilder/s", "description": "Bildrate" },
+    "behaviour": { "type": "header", "description": "Verhalten" },
+    "pause-covered": { "type": "switch", "default": true, "description": "Anhalten, wenn ein Fenster maximiert oder im Vollbild ist" },
+    "show-in-rdp": { "type": "switch", "default": false, "description": "Auch in RDP-Sitzungen anzeigen", "tooltip": "Ohne Grafikkarte (RDP) berechnet der Prozessor jedes Bild – das kostet spürbar Leistung." }
+}
