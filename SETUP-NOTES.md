@@ -487,8 +487,11 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   Lösung: bei `global.display` „restacked“ (über `Meta.later_add`) und während eines
   Ereignisses jede Sekunde neu einsortieren.
 - Weitere Einstellungen: Stärke, Größe, Wind, Bildrate, Anhalten bei
-  maximiertem/Vollbild-Fenster, Anzeige in RDP-Sitzungen (Standard aus; unter xrdp
-  rendert llvmpipe per Prozessor).
+  maximiertem/Vollbild-Fenster, Anzeige in RDP-Sitzungen (seit 1.0.7 Standard an,
+  damit sich die Effekte auch per RDP testen lassen; unter xrdp rendert llvmpipe per
+  Prozessor, bei Bedarf abschalten).
+- 1.0.7 behebt: Beim Ausblenden blieb die Regen-Abdunkelung durch Rundung bei
+  Deckkraft 3 hängen – das Ereignis endete nie, es wurde kein neues eingeplant.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
   ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 

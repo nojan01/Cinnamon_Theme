@@ -48,6 +48,7 @@ class Weather {
         this.acc = { rain: 0, leaf: 0, snow: 0 };
         this.event = null;
         this.paused = false;
+        this.shadeLevel = 0;
         this.timer = 0;
         this.checkTimer = 0;
         this.schedId = 0;
@@ -198,6 +199,7 @@ class Weather {
         this.checkTimer = 0;
         this.layer.hide();
         this.shade.opacity = 0;
+        this.shadeLevel = 0;
         this.event = null;
         for (let k in this.pool) {
             for (let p of this.pool[k]) p.actor.destroy();
@@ -378,7 +380,9 @@ class Weather {
 
         let rainLevel = ev && ev.kinds.rain ? env * ev.kinds.rain : 0;
         let target = Math.round(Math.min(1.6, k) * 50 * rainLevel);
-        this.shade.opacity = Math.round(this.shade.opacity + (target - this.shade.opacity) * Math.min(1, dt * 2));
+        this.shadeLevel += (target - this.shadeLevel) * Math.min(1, dt * 2);
+        if (Math.abs(target - this.shadeLevel) < 0.5) this.shadeLevel = target;
+        this.shade.opacity = Math.round(this.shadeLevel);
 
         let W = this.W, H = this.H;
         let rainRot = -Math.atan2(windPx * 0.7, 1000) * 180 / Math.PI;
@@ -412,7 +416,7 @@ class Weather {
             }
         }
 
-        if (!ev && !this.parts.length && this.shade.opacity <= 1) this._idle();
+        if (!ev && !this.parts.length && this.shadeLevel < 0.5) this._idle();
     }
 
     destroy() {
@@ -437,6 +441,7 @@ function enable() {
         startLeaves: () => weather && weather.trigger({ leaf: 1 }),
         startSnow: () => weather && weather.trigger({ snow: 1 }),
         stop: () => weather && weather.stop(),
+        instance: () => weather,
     };
 }
 

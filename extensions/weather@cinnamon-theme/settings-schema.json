@@ -28,6 +28,6 @@
 
     "h-behaviour": { "type": "header", "description": "Verhalten" },
     "pause-covered": { "type": "switch", "default": true, "description": "Anhalten, wenn ein Fenster maximiert oder im Vollbild ist" },
-    "show-in-rdp": { "type": "switch", "default": false, "description": "Auch in RDP-Sitzungen anzeigen",
-                     "tooltip": "Ohne Grafikkarte (RDP) berechnet der Prozessor jedes Bild – das kostet spürbar Leistung." }
+    "show-in-rdp": { "type": "switch", "default": true, "description": "Auch in RDP-Sitzungen anzeigen",
+                     "tooltip": "Ohne Grafikkarte (RDP) berechnet der Prozessor jedes Bild – das kostet etwas Leistung. Bei Bedarf hier abschalten." }
 }
