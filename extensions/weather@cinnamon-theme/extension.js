@@ -141,15 +141,18 @@ class Weather {
         return kinds;
     }
 
-    _startEvent(kinds) {
+    _startEvent(kinds, manual) {
         if (!kinds) { this._schedule(); return; }
         if (this.schedId) { GLib.source_remove(this.schedId); this.schedId = 0; }
         let lo = Math.max(10, this.durMin), hi = Math.max(lo, this.durMax);
         let windDir = this.wind !== 0 ? Math.sign(this.wind) : (Math.random() < 0.5 ? -1 : 1);
+        let dur = rand(lo, hi);
         this.event = {
             kinds,
+            manual: !!manual,
             t0: GLib.get_monotonic_time() / 1e6,
-            dur: rand(lo, hi),
+            dur,
+            rise: manual ? 2 : dur * 0.15,     // Testknopf: sofort sichtbar
             dir: windDir,
             minWind: kinds.leaf ? rand(0.5, 0.9) : 0.15,
             ph: rand(0, 6.28),
@@ -163,9 +166,27 @@ class Weather {
         this.paused = false;
         this._checkCovered(true);
         if (!this.paused) this._run();
+        if (manual) this._seed(kinds);
     }
 
-    trigger(kinds) { this._startEvent(kinds); }
+    trigger(kinds) { this._startEvent(kinds, true); }
+
+    // Testknopf: gleich einige Teilchen über den Bildschirm verteilen statt nur am Rand
+    _seed(kinds) {
+        let k = this.intensity / 100;
+        let wind = (Math.sign(this.wind) || this.event.dir) * Math.max(Math.abs(this.wind / 100), this.event.minWind) * 200;
+        let n = { rain: 120 * k, leaf: 6 * k, snow: 60 * k };
+        for (let kind in kinds) {
+            for (let i = 0; i < Math.round(n[kind] * kinds[kind]); i++) {
+                if (kind === "rain") this._spawnRain(wind);
+                else if (kind === "leaf") this._spawnLeaf(wind);
+                else this._spawnSnow();
+                let p = this.parts[this.parts.length - 1];
+                p.x = rand(0, this.W);
+                p.y = rand(-0.05, kind === "rain" ? 0.9 : 0.6) * this.H;
+            }
+        }
+    }
 
     stop() {
         this.event = null;
@@ -210,7 +231,7 @@ class Weather {
 
     _covered() {
         if (this.isRdp && !this.showInRdp) return true;
-        if (!this.pauseCovered) return false;
+        if (!this.pauseCovered || (this.event && this.event.manual)) return false;
         let ws = global.workspace_manager.get_active_workspace();
         return ws.list_windows().some(w =>
             !w.minimized && w.showing_on_its_workspace() && w.get_window_type() === Meta.WindowType.NORMAL &&
@@ -352,7 +373,7 @@ class Weather {
         if (ev) {
             let el = t - ev.t0;
             if (el > ev.dur) { this.event = ev = null; }
-            else env = smooth(el / (ev.dur * 0.15)) * smooth((ev.dur - el) / (ev.dur * 0.25)) *
+            else env = smooth(el / ev.rise) * smooth((ev.dur - el) / (ev.dur * 0.25)) *
                        (0.7 + 0.3 * Math.sin(el * 0.35 + ev.ph));
         }
 

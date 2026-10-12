@@ -526,6 +526,10 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
   ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 
+- Testknöpfe („Regen jetzt“ …): blenden in 2 s ein statt über 15 % der Dauer, verteilen
+  gleich Teilchen über den Bildschirm und laufen auch bei maximierten Fenstern
+  (sonst wirkte der Knopf minutenlang wirkungslos).
+
 ## 18. RDP mit Grafikbeschleunigung (glamor) – nur dieser Rechner
 
 Nicht Teil von install.sh/.deb (betrifft den Systemtreiber von xrdp).
