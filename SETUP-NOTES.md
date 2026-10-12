@@ -432,10 +432,12 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
 - `bash tools/build-deb.sh` baut `dist/cinnamon-theme-nebel_<VERSION>_all.deb`. Die Version steht in `VERSION`, `dist/` ist von Git ausgeschlossen.
 - Inhalt:
   - `/usr/share/cinnamon-theme-nebel/`: install.sh, Theme, Wallpaper, Desklets usw.
-  - `/usr/bin/nebel-einrichten`: ruft install.sh auf.
-  - `/usr/share/applications/nebel-einrichten.desktop`: Menüeintrag mit der Aktion „Nebel entfernen“.
+  - `/usr/bin/nebel-einrichten`: ruft install.sh auf (für das Terminal, ohne eigenen Menüeintrag).
+  - `/usr/bin/nebel-einstellungen` und `/usr/share/applications/nebel-einstellungen.desktop`:
+    ein einziger Menüeintrag für Einrichten, Einstellen und Entfernen (siehe 19), mit den
+    Aktionen „Einrichten“ und „Nebel entfernen“.
   - `/usr/share/doc/cinnamon-theme-nebel/copyright` im DEP-5-Format.
-- Die Einstellungen sind pro Benutzer und werden daher nicht vom Paket gesetzt, sondern über „Nebel einrichten“.
+- Die Einstellungen sind pro Benutzer und werden daher nicht vom Paket gesetzt, sondern über „Nebel-Einstellungen“ → Einrichtung.
 - Depends: nur Standardpakete. fastfetch und plank-reloaded stehen unter Suggests, weil sie Fremdquellen brauchen. Diese richtet `nebel-einrichten` selbst ein (siehe 14).
 - Lizenzen (siehe `COPYRIGHT.md`):
   - MIT, © 2026 Norbert Jander (`LICENSE`): eigene Bestandteile
@@ -551,13 +553,14 @@ xorgxrdp-Update aus dem Paket würde glamor wieder entfernen.
 `settings/nebel-einstellungen` (Python 3, GTK 3), Starter `nebel-einstellungen.desktop`
 (Kategorie Einstellungen). Das .deb legt es nach `/usr/bin`, `install.sh` (Baustein
 `settings`) ohne Paket nach `~/.local/bin` und `~/.local/share/applications`.
-Aufruf mit `--page appearance|panel|menu|dock|background|desklets|weather` öffnet
+Aufruf mit `--page setup|appearance|panel|menu|dock|background|desklets|weather` öffnet
 gleich die passende Seite. Texte deutsch, sonst englisch (nach `LANGUAGE`/`LANG`).
 
 Alle Änderungen wirken sofort:
 
 | Seite | Was | Wie |
 |---|---|---|
+| Einrichtung | Bausteine auswählen und einrichten, alles entfernen | ruft `install.sh --components a,b` bzw. `--uninstall` auf, Ausgabe im Protokoll; Stand aus `install.sh --list` (Marken in `backup.tsv`) |
 | Darstellung | Cinnamon-, GTK-, Symbol-, Zeiger-Theme, Zeigergröße, Farbschema, Schriften, Textskalierung | gsettings; GTK/Symbole/Zeiger in `org.cinnamon.desktop.interface` **und** `org.gnome.desktop.interface` |
 | Leiste | Höhe der ersten Leiste, eigenes Uhrformat | `org.cinnamon panels-height`; Kalender-Applet wie unten |
 | Mint-Menü | Deckkraft des Menüs | Erweiterung `dock-menu@cinnamon-theme` |
@@ -574,6 +577,14 @@ deren Schema gebaut (header, switch, spinbutton, scale, combobox, entry, button,
 löst in Cinnamon das `changed`-Signal aus. Knöpfe rufen
 `org.Cinnamon.activateCallback(callback, uuid, instanz)`. Tastenkürzel werden nur
 angezeigt; „Alle Optionen …“ öffnet dafür `xlet-settings`.
+
+„Nebel einrichten“ ist seit 1.0.8 kein eigener Menüeintrag mehr, sondern die erste Seite
+„Einrichtung“. Ist noch nichts eingerichtet, öffnet das Programm auf dieser Seite, sonst
+auf „Darstellung“. install.sh vermerkt seinen Pfad in `~/.config/cinnamon-theme/install-path`,
+damit das Programm es auch ohne Paket (Aufruf aus dem Repository) findet. Mit
+`NEBEL_FROM_SETTINGS=1` lässt install.sh den abschließenden zenity-Hinweis weg;
+Rückfragen (Passwort, Dock ersetzen?) kommen weiter als Dialog.
+`nebel-einstellungen --uninstall` entspricht `install.sh --uninstall`.
 
 Die Uhrzeiten von Tag/Nacht brauchen keinen eigenen Timer: der Timer läuft
 zusätzlich alle 15 Minuten, das Skript entscheidet nach `daynight.conf`.

@@ -2,11 +2,22 @@
 Type=Application
 Name=Nebel Settings
 Name[de]=Nebel-Einstellungen
-Comment=All settings of the Nebel theme in one place
-Comment[de]=Alle Einstellungen des Designs Nebel an einem Ort
+Comment=Set up, adjust or remove the Nebel desktop
+Comment[de]=Design „Nebel“ einrichten, anpassen oder entfernen
 Exec=nebel-einstellungen
 Icon=preferences-desktop-theme
 Terminal=false
 Categories=Settings;DesktopSettings;GTK;
 Keywords=Nebel;Theme;Design;Dock;Plank;Weather;Wetter;Desklet;
 StartupNotify=true
+Actions=setup;uninstall;
+
+[Desktop Action setup]
+Name=Set up
+Name[de]=Einrichten
+Exec=nebel-einstellungen --page setup
+
+[Desktop Action uninstall]
+Name=Remove Nebel
+Name[de]=Nebel entfernen
+Exec=nebel-einstellungen --uninstall

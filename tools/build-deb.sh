@@ -12,7 +12,6 @@ mkdir -p "$SHARE" "$DOC" "$ROOT/usr/bin" "$ROOT/usr/share/applications" "$ROOT/D
 cp -r "$REPO"/{install.sh,VERSION,LICENSE,LICENSE.GPL-3.0,COPYRIGHT.md,Nebel,wallpapers,desklets,session,plank,dock,extensions,daynight,terminal,system,fonts} "$SHARE/"
 mkdir -p "$SHARE/tools"; cp "$REPO/tools/build-nebel-cursor.py" "$SHARE/tools/"
 cp "$REPO/packaging/nebel-einrichten" "$ROOT/usr/bin/"
-cp "$REPO/packaging/nebel-einrichten.desktop" "$ROOT/usr/share/applications/"
 cp "$REPO/settings/nebel-einstellungen" "$ROOT/usr/bin/"
 cp "$REPO/settings/nebel-einstellungen.desktop" "$ROOT/usr/share/applications/"
 cp "$REPO/packaging/debian/copyright" "$DOC/copyright"

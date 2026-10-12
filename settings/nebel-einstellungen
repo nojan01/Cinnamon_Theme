@@ -4,6 +4,7 @@
 # Änderungen wirken sofort (gsettings, Cinnamon-Xlet-Einstellungen per D-Bus).
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -81,6 +82,21 @@ EN = {
     "Nicht installiert oder nicht aktiviert.": "Not installed or not enabled.",
     "Ändern über „Alle Optionen …“": "change via “All options …”",
     "Dock Plank ist nicht installiert.": "Plank dock is not installed.",
+    "Einrichtung": "Setup",
+    "Bausteine": "Components",
+    "eingerichtet": "set up",
+    "Ausgewählte einrichten": "Set up selected",
+    "Alles auswählen": "Select all",
+    "Alles entfernen …": "Remove everything …",
+    "Alle Einstellungen von Nebel rückgängig machen und den vorherigen Zustand wiederherstellen?":
+        "Undo all Nebel settings and restore the previous state?",
+    "Protokoll": "Log",
+    "Läuft …": "Running …",
+    "Fertig.": "Done.",
+    "Fehler (Code %d).": "Error (code %d).",
+    "Installationsprogramm nicht gefunden.": "Installer not found.",
+    "Vorherige Einstellungen werden gesichert und lassen sich mit „Alles entfernen“ zurückholen.":
+        "Previous settings are backed up and can be restored with “Remove everything”.",
 }
 
 
@@ -196,6 +212,18 @@ def debounce(widget, fn, ms=250):
 
 
 SYNC = 2  # GObject.BindingFlags.SYNC_CREATE
+
+
+def find_installer():
+    """Zuletzt benutztes install.sh (Paket oder Repository), sonst das aus dem Paket."""
+    cands = []
+    try:
+        with open(os.path.join(CONF_DIR, "install-path"), encoding="utf-8") as f:
+            cands.append(f.read().strip())
+    except OSError:
+        pass
+    cands.append("/usr/share/cinnamon-theme-nebel/install.sh")
+    return next((c for c in cands if c and os.path.isfile(c)), None)
 
 
 # ------------------------------------------------------------------ Seitenbau
@@ -366,6 +394,119 @@ class Page(Gtk.ScrolledWindow):
 
 
 # ------------------------------------------------------------------ Seiten
+def page_setup():
+    p = Page()
+    inst = find_installer()
+    if not inst:
+        p.note(_("Installationsprogramm nicht gefunden."))
+        return p
+    try:
+        with open(os.path.join(os.path.dirname(inst), "VERSION"), encoding="utf-8") as f:
+            version = f.read().strip()
+    except OSError:
+        version = ""
+    head = Gtk.Label(xalign=0)
+    head.set_line_wrap(True)
+    head.set_markup("<big><b>Nebel %s</b></big>\n<small>%s</small>" % (
+        GLib.markup_escape_text(version),
+        GLib.markup_escape_text(_("Vorherige Einstellungen werden gesichert und lassen sich mit „Alles entfernen“ zurückholen."))))
+    p.box.pack_start(head, False, False, 0)
+
+    p.section(_("Bausteine"))
+    checks, states = {}, {}
+
+    def read_list():
+        env = {k: v for k, v in os.environ.items() if k != "DISPLAY"}  # keine zenity-Dialoge
+        out = subprocess.run(["bash", inst, "--list"], capture_output=True, text=True, env=env).stdout
+        return [l.split("\t") for l in out.splitlines() if l.count("\t") == 2]
+
+    comps = read_list()
+    nothing = not any(i == "1" for _c, _d, i in comps)
+    for c, desc, done in comps:
+        cb = Gtk.CheckButton(label=desc, active=nothing)
+        st = Gtk.Label(xalign=1)
+        st.get_style_context().add_class("dim-label")
+        p.grid.attach(cb, 0, p._row, 1, 1)
+        p.grid.attach(st, 1, p._row, 1, 1)
+        p._row += 1
+        checks[c], states[c] = cb, st
+
+    def refresh_states():
+        for c, _d, done in read_list():
+            if c in states:
+                states[c].set_text("✓ " + _("eingerichtet") if done == "1" else "")
+    refresh_states()
+
+    bar = Gtk.Box(spacing=8)
+    b_all = Gtk.Button(label=_("Alles auswählen"))
+    b_all.connect("clicked", lambda _w: [cb.set_active(True) for cb in checks.values()])
+    b_run = Gtk.Button(label=_("Ausgewählte einrichten"))
+    b_run.get_style_context().add_class("suggested-action")
+    b_rm = Gtk.Button(label=_("Alles entfernen …"))
+    b_rm.get_style_context().add_class("destructive-action")
+    status = Gtk.Label(xalign=0, hexpand=True)
+    bar.pack_start(status, True, True, 0)
+    for b in (b_all, b_rm, b_run):
+        bar.pack_start(b, False, False, 0)
+    p.box.pack_start(bar, False, False, 0)
+
+    buf = Gtk.TextBuffer()
+    view = Gtk.TextView(buffer=buf, editable=False, monospace=True, wrap_mode=Gtk.WrapMode.WORD_CHAR)
+    sc = Gtk.ScrolledWindow(min_content_height=180)
+    sc.add(view)
+    exp = Gtk.Expander(label=_("Protokoll"))
+    exp.add(sc)
+    p.box.pack_start(exp, False, False, 0)
+    ansi = re.compile(r"\x1b\[[0-9;]*m")
+
+    def run(args):
+        for b in (b_all, b_run, b_rm):
+            b.set_sensitive(False)
+        status.set_text(_("Läuft …"))
+        buf.set_text("")
+        exp.set_expanded(True)
+        launcher = Gio.SubprocessLauncher.new(Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_MERGE)
+        launcher.setenv("NEBEL_FROM_SETTINGS", "1", True)
+        proc = launcher.spawnv(["bash", inst] + args)
+        stream = Gio.DataInputStream.new(proc.get_stdout_pipe())
+
+        def on_line(st, res):
+            line, _n = st.read_line_finish_utf8(res)
+            if line is None:
+                proc.wait_async(None, on_exit)
+                return
+            buf.insert(buf.get_end_iter(), ansi.sub("", line) + "\n")
+            view.scroll_to_iter(buf.get_end_iter(), 0, False, 0, 1)
+            st.read_line_async(GLib.PRIORITY_DEFAULT, None, on_line)
+
+        def on_exit(pr, res):
+            pr.wait_finish(res)
+            code = pr.get_exit_status()
+            status.set_text(_("Fertig.") if code == 0 else _("Fehler (Code %d).") % code)
+            for b in (b_all, b_run, b_rm):
+                b.set_sensitive(True)
+            refresh_states()
+        stream.read_line_async(GLib.PRIORITY_DEFAULT, None, on_line)
+
+    def do_run(_w):
+        sel = [c for c, cb in checks.items() if cb.get_active()]
+        if sel:
+            run(["--components", ",".join(sel)])
+    b_run.connect("clicked", do_run)
+
+    def do_remove(_w):
+        d = Gtk.MessageDialog(transient_for=p.get_toplevel(), modal=True, message_type=Gtk.MessageType.QUESTION,
+                              buttons=Gtk.ButtonsType.YES_NO,
+                              text=_("Alle Einstellungen von Nebel rückgängig machen und den vorherigen Zustand wiederherstellen?"))
+        ok = d.run() == Gtk.ResponseType.YES
+        d.destroy()
+        if ok:
+            run(["--uninstall"])
+    b_rm.connect("clicked", do_remove)
+    p.set_up_done = not nothing
+    return p
+
+
 def page_appearance():
     p = Page()
     ci = gsettings("org.cinnamon.desktop.interface")
@@ -591,8 +732,10 @@ class App(Gtk.Application):
         hb = Gtk.HeaderBar(show_close_button=True, title=_("Nebel-Einstellungen"))
         win.set_titlebar(hb)
 
+        start = "setup"
         stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
         pages = [
+            ("setup", _("Einrichtung"), page_setup),
             ("appearance", _("Darstellung"), page_appearance),
             ("panel", _("Leiste"), page_panel),
             ("menu", _("Mint-Menü"), lambda: page_extension("dock-menu@cinnamon-theme", _("Mint-Menü"))),
@@ -608,6 +751,8 @@ class App(Gtk.Application):
                 page = Page()
                 page.note("%s: %s" % (title, e))
             stack.add_titled(page, name, title)
+            if name == "setup" and getattr(page, "set_up_done", True):
+                start = "appearance"  # schon eingerichtet → gleich zu den Einstellungen
         side = Gtk.StackSidebar(stack=stack)
         side.set_size_request(170, -1)
         box = Gtk.Box()
@@ -615,11 +760,16 @@ class App(Gtk.Application):
         box.pack_start(stack, True, True, 0)
         win.add(box)
         win.show_all()
-        if self.page and stack.get_child_by_name(self.page):
-            stack.set_visible_child_name(self.page)
+        stack.set_visible_child_name(self.page if self.page and stack.get_child_by_name(self.page) else start)
 
 
 if __name__ == "__main__":
-    # Aufruf: nebel-einstellungen [--page appearance|panel|menu|dock|background|desklets|weather]
+    # Aufruf: nebel-einstellungen [--page setup|appearance|panel|menu|dock|background|desklets|weather]
+    #         nebel-einstellungen --uninstall   (alles rückgängig, wie install.sh --uninstall)
+    if "--uninstall" in sys.argv:
+        inst = find_installer()
+        if inst:
+            os.execvp("bash", ["bash", inst, "--uninstall"])
+        sys.exit(_("Installationsprogramm nicht gefunden."))
     start = sys.argv[sys.argv.index("--page") + 1] if "--page" in sys.argv[:-1] else None
     App(start).run(None)

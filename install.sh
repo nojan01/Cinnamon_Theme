@@ -7,6 +7,7 @@
 #   ./install.sh --components a,b   nur bestimmte Bausteine (siehe COMPONENTS)
 #   ./install.sh --dock replace|add Dock ersetzen oder nur ergänzen (Standard: fragen)
 #   ./install.sh --uninstall        alle Änderungen rückgängig machen
+#   ./install.sh --list             Bausteine mit Beschreibung und Stand (für Nebel-Einstellungen)
 #
 # Alle vorherigen Werte und überschriebenen Dateien werden in ~/.config/cinnamon-theme/
 # gesichert. Benötigte Pakete (auch fastfetch und Plank Reloaded samt Paketquelle)
@@ -462,6 +463,11 @@ while [ $# -gt 0 ]; do
     --components) shift; IFS=, read -r -a SELECTED <<< "$1" ;;
     --dock) shift; DOCK_MODE="$1" ;;
     --no-gui) GUI=0; NO_GUI=1 ;;
+    --list)
+      for c in "${COMPONENTS[@]}"; do
+        i=0; grep -q "^mark$TAB$c$TAB" "$BACKUP" 2>/dev/null && i=1
+        printf '%s\t%s\t%s\n' "$c" "${DESC[$c]}" "$i"
+      done; exit 0 ;;
     -v|--version) echo "Cinnamon_Theme Nebel $VERSION"; echo "$COPYRIGHT"; exit 0 ;;
     -h|--help) sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "Unbekannte Option: $1" ;;
@@ -472,6 +478,7 @@ done
 [ "$(id -u)" -eq 0 ] && die "Bitte nicht als root starten – das Programm fragt selbst nach dem Passwort."
 command -v gsettings >/dev/null || die "gsettings fehlt – ist das ein Cinnamon-System?"
 mkdir -p "$STATE"
+echo "$REPO/install.sh" > "$STATE/install-path"  # damit Nebel-Einstellungen es auch ohne Paket findet
 [ "${MODE:-}" = uninstall ] && uninstall
 
 if [ $ALL = 1 ]; then
@@ -514,5 +521,5 @@ for f in "$HOME"/.local/share/applications/*.desktop; do
     && msg+=$'\n'"- $(basename "$f"): einfarbiges Symbol, im Dock evtl. schlecht sichtbar"
 done
 log "$msg"
-[ $GUI = 1 ] && zenity --info --width=460 --title="Nebel $VERSION" --text="$msg"$'\n\n'"<small>$COPYRIGHT</small>" 2>/dev/null
+[ $GUI = 1 ] && [ -z "${NEBEL_FROM_SETTINGS:-}" ] && zenity --info --width=460 --title="Nebel $VERSION" --text="$msg"$'\n\n'"<small>$COPYRIGHT</small>" 2>/dev/null
 exit 0

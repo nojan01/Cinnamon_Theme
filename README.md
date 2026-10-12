@@ -13,8 +13,9 @@ Cinnamon-Desktop-Theme für Cinnamon 6.6, weiterentwickelt aus **CBlue 4.0**.
 
 **Paket (empfohlen):** `cinnamon-theme-nebel_<version>_all.deb` per Doppelklick installieren
 oder mit `sudo apt install ./cinnamon-theme-nebel_*_all.deb`. Danach im Menü
-**„Nebel einrichten“** starten (Befehl `nebel-einrichten`). Rechtsklick im Menü →
-„Nebel entfernen“ macht die eigenen Einstellungen rückgängig.
+**„Nebel-Einstellungen“** starten und auf der Seite **Einrichtung** die Bausteine
+einrichten. Dort oder per Rechtsklick im Menü → „Nebel entfernen“ werden die eigenen
+Einstellungen wieder rückgängig gemacht. Im Terminal geht beides mit `nebel-einrichten`.
 
 Paket selbst bauen: `bash tools/build-deb.sh` → `dist/`.
 
@@ -38,8 +39,8 @@ Tag/Nacht-Hintergrund, Darstellung (Mint-L-Grey, Bibata), Leiste, Desklets
 Blätter, Schnee – abschaltbar mit Super+Alt+W), Sperrbildschirm,
 Terminal-Profil, Programm „Nebel-Einstellungen“ und Anmeldebildschirm.
 
-Nach der Einrichtung lassen sich alle Einstellungen im Programm **Nebel-Einstellungen**
-(Mint-Menü → Einstellungen) ändern: Darstellung, Leiste, Mint-Menü, Dock,
+Im selben Programm **Nebel-Einstellungen** (Mint-Menü → Einstellungen) lassen sich
+danach alle Einstellungen ändern: Darstellung, Leiste, Mint-Menü, Dock,
 Hintergrund, Desklets und Wetter. Änderungen wirken sofort.
 
 Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
