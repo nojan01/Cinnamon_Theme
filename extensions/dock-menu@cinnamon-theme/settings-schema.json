@@ -1,0 +1,16 @@
+{
+    "head": {
+        "type": "header",
+        "description": "Mint-Menü"
+    },
+    "menu-opacity": {
+        "type": "scale",
+        "default": 75,
+        "min": 10,
+        "max": 100,
+        "step": 5,
+        "units": "%",
+        "description": "Deckkraft des Menühintergrunds",
+        "tooltip": "100 % = undurchsichtig. Gilt sofort für das Mint-Menü (Leiste und Dock)."
+    }
+}

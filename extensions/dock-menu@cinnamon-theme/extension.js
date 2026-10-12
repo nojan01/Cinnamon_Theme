@@ -11,6 +11,7 @@ const Main = imports.ui.main;
 const PopupMenu = imports.ui.popupMenu;
 const AppletManager = imports.ui.appletManager;
 const Util = imports.misc.util;
+const Settings = imports.ui.settings;
 
 const MENU_UUID = "menu@cinnamon.org";
 const MARK = "__nebelDockPatched";
@@ -21,6 +22,9 @@ const DBUS_IFACE = '<node><interface name="de.little_tools.NebelMenu"><method na
 
 let patched = [];
 let dbusObj = null;
+let settings = null;
+let menuOpacity = 75;
+let styledMenus = [];
 let timerId = 0;
 let settingsId = 0;
 
@@ -69,6 +73,7 @@ function patchAll() {
         proto[MARK] = orig;
         patched.push(proto);
     }
+    applyOpacity();
     return GLib.SOURCE_CONTINUE;
 }
 
@@ -180,9 +185,41 @@ function openAtDock() {
     }
 }
 
-function init(metadata) {}
+// Hintergrund des Mint-Menüs: Farbe wie im Theme (.menu), Deckkraft einstellbar
+function applyOpacity() {
+    let instances = AppletManager.getRunningInstancesForUuid(MENU_UUID) || [];
+    styledMenus = styledMenus.filter(m => instances.some(a => a.menu === m) && !m.actor.is_finalized());
+    for (let applet of instances) {
+        let menu = applet.menu;
+        if (!menu || menu.actor.is_finalized())
+            continue;
+        menu.actor.set_style("background-color: rgba(40, 40, 40, " + (menuOpacity / 100).toFixed(2) + ");");
+        if (!styledMenus.includes(menu))
+            styledMenus.push(menu);
+    }
+}
+
+function resetOpacity() {
+    for (let menu of styledMenus)
+        if (!menu.actor.is_finalized())
+            menu.actor.set_style(null);
+    styledMenus = [];
+}
+
+let extUuid = "dock-menu@cinnamon-theme";
+
+function init(metadata) {
+    extUuid = metadata.uuid;
+}
 
 function enable() {
+    try {
+        settings = new Settings.ExtensionSettings({}, extUuid);
+        menuOpacity = settings.getValue("menu-opacity");
+        settings.bind("menu-opacity", "menuOpacity", () => { menuOpacity = settings.getValue("menu-opacity"); applyOpacity(); });
+    } catch (e) {
+        global.logError("dock-menu@cinnamon-theme: Einstellungen " + e);
+    }
     patchAll();
     // Menü-Applet kann neu geladen werden (neue Klassen) – regelmäßig nachziehen
     timerId = GLib.timeout_add_seconds(GLib.PRIORITY_LOW, 5, patchAll);
@@ -209,4 +246,9 @@ function disable() {
         delete proto[MARK];
     }
     patched = [];
+    resetOpacity();
+    if (settings) {
+        settings.finalize();
+        settings = null;
+    }
 }
