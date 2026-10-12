@@ -13,6 +13,8 @@ cp -r "$REPO"/{install.sh,VERSION,LICENSE,LICENSE.GPL-3.0,COPYRIGHT.md,Nebel,wal
 mkdir -p "$SHARE/tools"; cp "$REPO/tools/build-nebel-cursor.py" "$SHARE/tools/"
 cp "$REPO/packaging/nebel-einrichten" "$ROOT/usr/bin/"
 cp "$REPO/packaging/nebel-einrichten.desktop" "$ROOT/usr/share/applications/"
+cp "$REPO/settings/nebel-einstellungen" "$ROOT/usr/bin/"
+cp "$REPO/settings/nebel-einstellungen.desktop" "$ROOT/usr/share/applications/"
 cp "$REPO/packaging/debian/copyright" "$DOC/copyright"
 cp "$REPO/README.md" "$REPO/SETUP-NOTES.md" "$REPO/COPYRIGHT.md" "$DOC/"
 printf '%s (%s) stable; urgency=low\n\n  * Version %s\n\n -- Norbert Jander <n.jander@posteo.de>  %s\n' \
@@ -21,7 +23,7 @@ printf '%s (%s) stable; urgency=low\n\n  * Version %s\n\n -- Norbert Jander <n.j
 # Rechte (Quelle kann ein Netzlaufwerk ohne Unix-Rechte sein)
 find "$ROOT" -type d -exec chmod 755 {} +
 find "$ROOT" -type f -exec chmod 644 {} +
-chmod 755 "$ROOT/usr/bin/nebel-einrichten" "$SHARE/install.sh" "$SHARE"/system/*.sh \
+chmod 755 "$ROOT/usr/bin/nebel-einrichten" "$ROOT/usr/bin/nebel-einstellungen" "$SHARE/install.sh" "$SHARE"/system/*.sh \
   "$SHARE/session/cinnamon-theme-session" "$SHARE/daynight/cinnamon-theme-daynight" "$SHARE/tools/build-nebel-cursor.py" "$SHARE/dock/nebel-dock-add"
 
 SIZE=$(du -sk --exclude=DEBIAN "$ROOT" | cut -f1)

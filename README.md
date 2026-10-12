@@ -36,7 +36,11 @@ Bausteine: Schrift JetBrains Mono, Cinnamon-Theme „Nebel“, Hintergrundbild,
 Tag/Nacht-Hintergrund, Darstellung (Mint-L-Grey, Bibata), Leiste, Desklets
 (Systeminfo und Systemlast), Sitzungsmenü, Dock Plank, Mint-Menü → Dock, Wetter auf dem Desktop (Regen,
 Blätter, Schnee – abschaltbar mit Super+Alt+W), Sperrbildschirm,
-Terminal-Profil und Anmeldebildschirm.
+Terminal-Profil, Programm „Nebel-Einstellungen“ und Anmeldebildschirm.
+
+Nach der Einrichtung lassen sich alle Einstellungen im Programm **Nebel-Einstellungen**
+(Mint-Menü → Einstellungen) ändern: Darstellung, Leiste, Mint-Menü, Dock,
+Hintergrund, Desklets und Wetter. Änderungen wirken sofort.
 
 Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
 
@@ -47,6 +51,7 @@ Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
 - `dock/`, `extensions/dock-menu@…` – Programme aus dem Mint-Menü ins Dock aufnehmen;
   Dock-Punkt „Anwendungen“ öffnet das Mint-Menü mit Suche
 - `extensions/weather@cinnamon-theme` – Wettereffekte auf dem Desktop
+- `settings/` – Programm „Nebel-Einstellungen“ (Python/GTK 3)
 - `desklets/`, `session/`, `plank/`, `daynight/`, `terminal/`, `system/`, `fonts/`
 - `CBlue/` – unverändertes Ausgangsthema
 - `CBlue/cinnamon/cinnamon.css` – Cinnamon-Shell-Theme

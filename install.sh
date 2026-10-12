@@ -21,7 +21,7 @@ TAB=$'\t'
 VERSION="$(cat "$REPO/VERSION" 2>/dev/null || echo dev)"
 COPYRIGHT="© 2026 Norbert Jander · MIT-Lizenz (Theme „Nebel“: GPL-3.0, basiert auf CBlue)"
 
-COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank dockmenu weather screensaver terminal lightdm)
+COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank dockmenu weather screensaver terminal settings lightdm)
 declare -A DESC=(
   [fonts]="Schrift JetBrains Mono"
   [theme]="Cinnamon-Theme „Nebel“"
@@ -36,6 +36,7 @@ declare -A DESC=(
   [weather]="Wetter auf dem Desktop: Regen, Blätter, Schnee (abschaltbar)"
   [screensaver]="Sperrbildschirm mit JetBrains Mono"
   [terminal]="Terminal-Profil „Nebel“"
+  [settings]="Programm „Nebel-Einstellungen“ (alle Einstellungen an einem Ort)"
   [lightdm]="Anmeldebildschirm (root)"
 )
 
@@ -404,6 +405,16 @@ do_terminal() {
     dset "${B}list" "$list"
   fi
   dset "${B}default" "'$U'"
+}
+
+do_settings() {
+  log "Nebel-Einstellungen"
+  if [ -x /usr/bin/nebel-einstellungen ]; then mark settings; return; fi  # aus dem .deb-Paket
+  put "$REPO/settings/nebel-einstellungen" "$HOME/.local/bin/nebel-einstellungen" 755
+  local app="$HOME/.local/share/applications/nebel-einstellungen.desktop"
+  remember_path "$app"; mkdir -p "$(dirname "$app")"
+  sed "s|^Exec=nebel-einstellungen|Exec=$HOME/.local/bin/nebel-einstellungen|" "$REPO/settings/nebel-einstellungen.desktop" > "$app"
+  mark settings
 }
 
 do_lightdm() {

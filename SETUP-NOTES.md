@@ -546,6 +546,38 @@ Rückweg: `sudo tar -xzf /var/backups/xorgxrdp-ohne-glamor-20261011-164329.tgz -
 (oder alte .deb aus `~/Downloads/xorgxrdp` mit `dpkg -i`). Achtung: ein
 xorgxrdp-Update aus dem Paket würde glamor wieder entfernen.
 
+## 19. Programm „Nebel-Einstellungen“
+
+`settings/nebel-einstellungen` (Python 3, GTK 3), Starter `nebel-einstellungen.desktop`
+(Kategorie Einstellungen). Das .deb legt es nach `/usr/bin`, `install.sh` (Baustein
+`settings`) ohne Paket nach `~/.local/bin` und `~/.local/share/applications`.
+Aufruf mit `--page appearance|panel|menu|dock|background|desklets|weather` öffnet
+gleich die passende Seite. Texte deutsch, sonst englisch (nach `LANGUAGE`/`LANG`).
+
+Alle Änderungen wirken sofort:
+
+| Seite | Was | Wie |
+|---|---|---|
+| Darstellung | Cinnamon-, GTK-, Symbol-, Zeiger-Theme, Zeigergröße, Farbschema, Schriften, Textskalierung | gsettings; GTK/Symbole/Zeiger in `org.cinnamon.desktop.interface` **und** `org.gnome.desktop.interface` |
+| Leiste | Höhe der ersten Leiste, eigenes Uhrformat | `org.cinnamon panels-height`; Kalender-Applet wie unten |
+| Mint-Menü | Deckkraft des Menüs | Erweiterung `dock-menu@cinnamon-theme` |
+| Dock | Theme, Symbolgröße, Zoom, Ausblenden, Position | `net.launchpad.plank.dock.settings` unter `/net/launchpad/plank/docks/dock1/` |
+| Hintergrund | Tag/Nacht an/aus, Uhrzeiten | `systemctl --user enable/disable --now cinnamon-theme-daynight.timer`; `~/.config/cinnamon-theme/daynight.conf`, danach einmal `cinnamon-theme-daynight` |
+| Desklets | Sprache, Systeminfo, Systemlast | Datei `~/.config/cinnamon-theme/desklet-language`; Desklet-Einstellungen wie unten |
+| Wetter | alle Optionen der Erweiterung, Knöpfe „Regen jetzt“ … | Erweiterung `weather@cinnamon-theme` |
+
+**Xlet-Einstellungen (Erweiterungen, Desklets, Applets)** werden aus der Datei
+`~/.config/cinnamon/spices/<uuid>/<instanz>.json` gelesen und die Bedienelemente aus
+deren Schema gebaut (header, switch, spinbutton, scale, combobox, entry, button,
+`dependency`). Zum Ändern: Wert in die Datei schreiben **und**
+`org.Cinnamon.updateSetting(uuid, instanz, key, json)` per D-Bus aufrufen – erst das
+löst in Cinnamon das `changed`-Signal aus. Knöpfe rufen
+`org.Cinnamon.activateCallback(callback, uuid, instanz)`. Tastenkürzel werden nur
+angezeigt; „Alle Optionen …“ öffnet dafür `xlet-settings`.
+
+Die Uhrzeiten von Tag/Nacht brauchen keinen eigenen Timer: der Timer läuft
+zusätzlich alle 15 Minuten, das Skript entscheidet nach `daynight.conf`.
+
 ## Sicherungen auf dem System
 
 - `/var/backups/xorgxrdp-ohne-glamor-20261011-164329.tgz` – xorgxrdp-Treiber vor glamor (Abschnitt 18)

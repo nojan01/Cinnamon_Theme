@@ -1,0 +1,625 @@
+#!/usr/bin/env python3
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
+# „Nebel-Einstellungen“: alle Einstellungen des Themes Nebel an einem Ort.
+# Änderungen wirken sofort (gsettings, Cinnamon-Xlet-Einstellungen per D-Bus).
+import json
+import os
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
+
+HOME = os.path.expanduser("~")
+CONF_DIR = os.path.join(HOME, ".config", "cinnamon-theme")
+SPICES = os.path.join(HOME, ".config", "cinnamon", "spices")
+PLANK_PATH = "/net/launchpad/plank/docks/dock1/"
+
+# ------------------------------------------------------------------ Sprache
+_lang = next((os.environ[v] for v in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG") if os.environ.get(v)), "")
+GERMAN = _lang.startswith("de")
+EN = {
+    "Nebel-Einstellungen": "Nebel Settings",
+    "Darstellung": "Appearance",
+    "Leiste": "Panel",
+    "Mint-Menü": "Mint menu",
+    "Dock": "Dock",
+    "Hintergrund": "Background",
+    "Desklets": "Desklets",
+    "Wetter": "Weather",
+    "Themen": "Themes",
+    "Schreibtisch (Cinnamon)": "Desktop (Cinnamon)",
+    "Anwendungen (GTK)": "Applications (GTK)",
+    "Symbole": "Icons",
+    "Mauszeiger": "Mouse pointer",
+    "Zeigergröße": "Pointer size",
+    "Farbschema": "Colour scheme",
+    "Standard": "Default",
+    "Dunkel bevorzugen": "Prefer dark",
+    "Hell bevorzugen": "Prefer light",
+    "Schriften": "Fonts",
+    "Standardschrift": "Default font",
+    "Dokumentenschrift": "Document font",
+    "Festbreitenschrift": "Monospace font",
+    "Fenstertitel": "Window title",
+    "Textskalierung": "Text scaling",
+    "Höhe": "Height",
+    "Uhr": "Clock",
+    "Eigenes Uhrformat": "Custom clock format",
+    "Format": "Format",
+    "Format der Kurzinfo": "Tooltip format",
+    "strftime-Platzhalter, z. B. %H:%M %a, %-d. %b": "strftime codes, e.g. %H:%M %a, %-d. %b",
+    "Theme": "Theme",
+    "Symbolgröße": "Icon size",
+    "Vergrößern beim Überfahren": "Zoom on hover",
+    "Vergrößerung": "Zoom",
+    "Ausblenden": "Hiding",
+    "Position": "Position",
+    "Nie": "Never",
+    "Intelligent": "Intelligent",
+    "Automatisch": "Automatic",
+    "Bei maximiertem Fenster": "When a window is maximized",
+    "Bei Fenstern": "When windows overlap",
+    "Beim aktiven Fenster": "When the active window overlaps",
+    "Unten": "Bottom",
+    "Oben": "Top",
+    "Links": "Left",
+    "Rechts": "Right",
+    "Tag/Nacht-Hintergrund": "Day/night wallpaper",
+    "Automatisch umschalten": "Switch automatically",
+    "Tag ab": "Day from",
+    "Nacht ab": "Night from",
+    "Uhr (volle Stunde)": "o'clock (full hour)",
+    "Sprache": "Language",
+    "Sprache der Desklets": "Desklet language",
+    "Wie System": "Like system",
+    "Systeminfo": "System info",
+    "Systemlast": "System load",
+    "Alle Optionen …": "All options …",
+    "Nicht installiert oder nicht aktiviert.": "Not installed or not enabled.",
+    "Ändern über „Alle Optionen …“": "change via “All options …”",
+    "Dock Plank ist nicht installiert.": "Plank dock is not installed.",
+}
+
+
+def _(s):
+    return s if GERMAN else EN.get(s, s)
+
+
+# ------------------------------------------------------------------ Hilfen
+def gsettings(schema_id, path=None):
+    src = Gio.SettingsSchemaSource.get_default()
+    if src is None or src.lookup(schema_id, True) is None:
+        return None
+    return Gio.Settings.new_with_path(schema_id, path) if path else Gio.Settings.new(schema_id)
+
+
+def cinnamon_call(method, args, sig):
+    try:
+        Gio.bus_get_sync(Gio.BusType.SESSION, None).call_sync(
+            "org.Cinnamon", "/org/Cinnamon", "org.Cinnamon", method,
+            GLib.Variant(sig, args), None, Gio.DBusCallFlags.NONE, 2000, None)
+    except GLib.Error as e:
+        print("D-Bus:", e.message)
+
+
+def theme_names(kind, check):
+    """Namen aller Themes (kind 'themes' oder 'icons'), die check(pfad) erfüllen."""
+    if kind == "themes":
+        bases = [os.path.join(HOME, ".themes"), os.path.join(HOME, ".local/share/themes"), "/usr/share/themes"]
+    else:
+        bases = [os.path.join(HOME, ".icons"), os.path.join(HOME, ".local/share/icons"), "/usr/share/icons"]
+    names = set()
+    for base in bases:
+        try:
+            for n in os.listdir(base):
+                if check(os.path.join(base, n)):
+                    names.add(n)
+        except OSError:
+            pass
+    return sorted(names, key=str.lower)
+
+
+def is_icon_theme(p):
+    idx = os.path.join(p, "index.theme")
+    if not os.path.isfile(idx) or os.path.isdir(os.path.join(p, "cursors")):
+        return False
+    try:
+        with open(idx, encoding="utf-8", errors="ignore") as f:
+            return "Directories=" in f.read()
+    except OSError:
+        return False
+
+
+class XletSettings:
+    """Einstellungsdatei eines Cinnamon-Xlets; Änderungen werden Cinnamon gemeldet."""
+
+    def __init__(self, uuid, instance):
+        self.uuid, self.instance = uuid, str(instance)
+        self.path = os.path.join(SPICES, uuid, self.instance + ".json")
+        with open(self.path, encoding="utf-8") as f:
+            self.data = json.load(f)
+
+    def get(self, key):
+        e = self.data.get(key, {})
+        return e.get("value", e.get("default"))
+
+    def set(self, key, value):
+        try:
+            with open(self.path, encoding="utf-8") as f:
+                self.data = json.load(f)
+        except (OSError, ValueError):
+            pass
+        self.data[key]["value"] = value
+        text = json.dumps(self.data, indent=4, ensure_ascii=False)
+        try:
+            os.remove(self.path)
+        except OSError:
+            pass
+        with open(self.path, "w", encoding="utf-8") as f:
+            f.write(text)
+        cinnamon_call("updateSetting", (self.uuid, self.instance, key, json.dumps(value)), "(ssss)")
+
+
+def _enabled(key):
+    s = gsettings("org.cinnamon")
+    return s.get_strv(key) if s else []
+
+
+def desklet_instance(uuid):
+    for d in _enabled("enabled-desklets"):
+        p = d.split(":")
+        if len(p) > 1 and p[0] == uuid:
+            return p[1]
+    return None
+
+
+def applet_instance(uuid):
+    for d in _enabled("enabled-applets"):
+        p = d.split(":")
+        if len(p) > 4 and p[3] == uuid:
+            return p[4]
+    return None
+
+
+def debounce(widget, fn, ms=250):
+    if getattr(widget, "_nebel_t", 0):
+        GLib.source_remove(widget._nebel_t)
+
+    def run():
+        widget._nebel_t = 0
+        fn()
+        return GLib.SOURCE_REMOVE
+    widget._nebel_t = GLib.timeout_add(ms, run)
+
+
+SYNC = 2  # GObject.BindingFlags.SYNC_CREATE
+
+
+# ------------------------------------------------------------------ Seitenbau
+class Page(Gtk.ScrolledWindow):
+    def __init__(self):
+        super().__init__(hscrollbar_policy=Gtk.PolicyType.NEVER)
+        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
+                           margin_top=18, margin_bottom=18, margin_start=24, margin_end=24)
+        self.add(self.box)
+        self.grid = None
+        self._row = 0
+
+    def section(self, title):
+        lbl = Gtk.Label(xalign=0)
+        lbl.set_markup("<b>%s</b>" % GLib.markup_escape_text(title))
+        frame = Gtk.Frame()
+        self.grid = Gtk.Grid(column_spacing=24, row_spacing=10, margin_top=12, margin_bottom=12,
+                             margin_start=14, margin_end=14)
+        frame.add(self.grid)
+        v = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        v.pack_start(lbl, False, False, 0)
+        v.pack_start(frame, False, False, 0)
+        self.box.pack_start(v, False, False, 0)
+        self._row = 0
+        return self.grid
+
+    def row(self, label, widget, hint=None):
+        lbl = Gtk.Label(label=label, xalign=0, hexpand=True)
+        lbl.set_line_wrap(True)
+        widget.set_halign(Gtk.Align.END)
+        widget.set_valign(Gtk.Align.CENTER)
+        self.grid.attach(lbl, 0, self._row, 1, 1)
+        self.grid.attach(widget, 1, self._row, 1, 1)
+        self._row += 1
+        if hint:
+            h = Gtk.Label(xalign=0)
+            h.set_markup("<small>%s</small>" % GLib.markup_escape_text(hint))
+            h.get_style_context().add_class("dim-label")
+            self.grid.attach(h, 0, self._row, 2, 1)
+            self._row += 1
+        return widget
+
+    def note(self, text):
+        lbl = Gtk.Label(label=text, xalign=0)
+        lbl.get_style_context().add_class("dim-label")
+        self.box.pack_start(lbl, False, False, 0)
+
+    # --- gsettings-Bausteine
+    def g_switch(self, s, key, label):
+        w = Gtk.Switch(active=s.get_boolean(key))
+        w.connect("notify::active", lambda w, _p: s.set_boolean(key, w.get_active()))
+        return self.row(label, w)
+
+    def g_spin(self, s, key, label, lo, hi, step=1, unit="", also=()):
+        w = Gtk.SpinButton.new_with_range(lo, hi, step)
+        w.set_value(s.get_int(key))
+
+        def apply():
+            for o in (s,) + tuple(also):
+                o.set_int(key, w.get_value_as_int())
+        w.connect("value-changed", lambda w: debounce(w, apply))
+        return self.row(label + (" (%s)" % unit if unit else ""), w)
+
+    def g_combo(self, s, key, label, options, also=()):
+        """options: Liste (wert, anzeige); also: weitere Settings-Objekte mit gleichem Schlüssel."""
+        w = Gtk.ComboBoxText()
+        cur = s.get_string(key)
+        if cur and cur not in [v for v, _t in options]:
+            options = [(cur, cur)] + list(options)
+        for v, t in options:
+            w.append(v, t)
+        w.set_active_id(cur)
+
+        def changed(w):
+            v = w.get_active_id()
+            if v is not None:
+                for o in (s,) + tuple(also):
+                    o.set_string(key, v)
+        w.connect("changed", changed)
+        return self.row(label, w)
+
+    def g_font(self, s, key, label):
+        w = Gtk.FontButton(font=s.get_string(key), use_font=True)
+        w.connect("font-set", lambda w: s.set_string(key, w.get_font()))
+        return self.row(label, w)
+
+    # --- Xlet-Einstellungen nach dessen settings-schema
+    def xlet(self, xs, kind, title):
+        if title:
+            self.section(title)
+        widgets, deps = {}, []
+        for key, e in xs.data.items():
+            if not isinstance(e, dict) or "type" not in e:
+                continue
+            t = e["type"]
+            desc = e.get("description", key)
+            if t == "header":
+                if self.grid is None or self._row:
+                    self.section(desc)
+                continue
+            if self.grid is None:
+                self.section(xs.uuid)
+            if t in ("switch", "checkbox"):
+                w = Gtk.Switch(active=bool(xs.get(key)))
+                w.connect("notify::active", lambda w, _p, k=key: xs.set(k, w.get_active()))
+            elif t in ("spinbutton", "scale"):
+                lo, hi, st = e.get("min", 0), e.get("max", 100), e.get("step", 1)
+                isint = all(float(x).is_integer() for x in (lo, hi, st))
+                if t == "scale":
+                    w = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, lo, hi, st)
+                    w.set_size_request(260, -1)
+                    w.set_digits(0 if isint else 2)
+                    w.set_value_pos(Gtk.PositionType.RIGHT)
+                else:
+                    w = Gtk.SpinButton.new_with_range(lo, hi, st)
+                    if not isint:
+                        w.set_digits(len(str(st).split(".")[-1]))
+                w.set_value(xs.get(key))
+
+                def changed(w, k=key, isint=isint):
+                    debounce(w, lambda: xs.set(k, int(round(w.get_value())) if isint else round(w.get_value(), 3)))
+                w.connect("value-changed", changed)
+                if e.get("units"):
+                    desc = "%s (%s)" % (desc, e["units"])
+            elif t == "combobox":
+                w = Gtk.ComboBoxText()
+                for lbl, val in e.get("options", {}).items():
+                    w.append(json.dumps(val), lbl)
+                w.set_active_id(json.dumps(xs.get(key)))
+                w.connect("changed", lambda w, k=key: w.get_active_id() and xs.set(k, json.loads(w.get_active_id())))
+            elif t == "entry":
+                w = Gtk.Entry(text=str(xs.get(key) or ""), width_chars=28)
+                w.connect("changed", lambda w, k=key: debounce(w, lambda: xs.set(k, w.get_text()), 600))
+            elif t == "button":
+                w = Gtk.Button(label=desc)
+                w.connect("clicked", lambda _w, cb=e.get("callback", ""):
+                          cinnamon_call("activateCallback", (cb, xs.uuid, xs.instance), "(sss)"))
+                desc = ""
+            elif t == "keybinding":
+                acc = (xs.get(key) or "").split("::")[0]
+                k, m = Gtk.accelerator_parse(acc)
+                w = Gtk.Label(label=Gtk.accelerator_get_label(k, m) if k else (acc or "–"))
+                desc = "%s – %s" % (desc, _("Ändern über „Alle Optionen …“"))
+            else:
+                continue
+            self.row(desc, w)
+            widgets[key] = w
+            dep = e.get("dependency")
+            if isinstance(dep, str) and dep.lstrip("!") in xs.data:
+                deps.append((w, dep))
+
+        def refresh(*_a):
+            for w, dep in deps:
+                src = widgets.get(dep.lstrip("!"))
+                on = src.get_active() if isinstance(src, Gtk.Switch) else bool(xs.get(dep.lstrip("!")))
+                w.set_sensitive(on != dep.startswith("!"))
+        for _w, dep in deps:
+            src = widgets.get(dep.lstrip("!"))
+            if isinstance(src, Gtk.Switch):
+                src.connect("notify::active", refresh)
+        refresh()
+
+        args = ["xlet-settings", kind, xs.uuid] + ([] if kind == "extension" else ["-i", xs.instance])
+        more = Gtk.Button(label=_("Alle Optionen …"), halign=Gtk.Align.END)
+        more.connect("clicked", lambda _w: subprocess.Popen(args))
+        self.box.pack_start(more, False, False, 0)
+        self.grid = None
+
+
+# ------------------------------------------------------------------ Seiten
+def page_appearance():
+    p = Page()
+    ci = gsettings("org.cinnamon.desktop.interface")
+    gn = gsettings("org.gnome.desktop.interface")
+    also = (gn,) if gn else ()
+    ct = gsettings("org.cinnamon.theme")
+    wm = gsettings("org.cinnamon.desktop.wm.preferences")
+    portal = gsettings("org.x.apps.portal")
+
+    p.section(_("Themen"))
+    if ct:
+        names = theme_names("themes", lambda d: os.path.isdir(os.path.join(d, "cinnamon")))
+        p.g_combo(ct, "name", _("Schreibtisch (Cinnamon)"), [(n, n) for n in names])
+    if ci:
+        names = theme_names("themes", lambda d: os.path.isdir(os.path.join(d, "gtk-3.0")))
+        p.g_combo(ci, "gtk-theme", _("Anwendungen (GTK)"), [(n, n) for n in names], also)
+        names = theme_names("icons", is_icon_theme)
+        p.g_combo(ci, "icon-theme", _("Symbole"), [(n, n) for n in names], also)
+        names = theme_names("icons", lambda d: os.path.isdir(os.path.join(d, "cursors")))
+        p.g_combo(ci, "cursor-theme", _("Mauszeiger"), [(n, n) for n in names], also)
+        p.g_spin(ci, "cursor-size", _("Zeigergröße"), 16, 96, 1, "px", also)
+    if portal:
+        p.g_combo(portal, "color-scheme", _("Farbschema"),
+                  [("default", _("Standard")), ("prefer-dark", _("Dunkel bevorzugen")),
+                   ("prefer-light", _("Hell bevorzugen"))])
+
+    p.section(_("Schriften"))
+    if ci:
+        p.g_font(ci, "font-name", _("Standardschrift"))
+    if gn:
+        p.g_font(gn, "document-font-name", _("Dokumentenschrift"))
+        p.g_font(gn, "monospace-font-name", _("Festbreitenschrift"))
+    if wm:
+        p.g_font(wm, "titlebar-font", _("Fenstertitel"))
+    if ci:
+        w = Gtk.SpinButton.new_with_range(0.5, 3.0, 0.05)
+        w.set_digits(2)
+        w.set_value(ci.get_double("text-scaling-factor"))
+        w.connect("value-changed", lambda w: debounce(w, lambda: ci.set_double("text-scaling-factor", w.get_value())))
+        p.row(_("Textskalierung"), w)
+    return p
+
+
+def page_panel():
+    p = Page()
+    s = gsettings("org.cinnamon")
+    if s:
+        p.section(_("Leiste"))
+        heights = s.get_strv("panels-height")
+        first = heights[0].split(":") if heights else ["1", "34"]
+        w = Gtk.SpinButton.new_with_range(20, 80, 1)
+        w.set_value(int(first[1]) if len(first) > 1 and first[1].isdigit() else 34)
+
+        def set_h():
+            hs = s.get_strv("panels-height") or ["%s:34" % first[0]]
+            hs[0] = "%s:%d" % (hs[0].split(":")[0], w.get_value_as_int())
+            s.set_strv("panels-height", hs)
+        w.connect("value-changed", lambda w: debounce(w, set_h, 400))
+        p.row(_("Höhe") + " (px)", w)
+
+    inst = applet_instance("calendar@cinnamon.org")
+    try:
+        xs = XletSettings("calendar@cinnamon.org", inst) if inst else None
+    except (OSError, ValueError):
+        xs = None
+    if xs and "custom-format" in xs.data:
+        p.section(_("Uhr"))
+        sw = Gtk.Switch(active=bool(xs.get("use-custom-format")))
+        sw.connect("notify::active", lambda w, _p: xs.set("use-custom-format", w.get_active()))
+        p.row(_("Eigenes Uhrformat"), sw)
+        for key, label, hint in (("custom-format", _("Format"), _("strftime-Platzhalter, z. B. %H:%M %a, %-d. %b")),
+                                 ("custom-tooltip-format", _("Format der Kurzinfo"), None)):
+            if key in xs.data:
+                e = Gtk.Entry(text=xs.get(key) or "", width_chars=24)
+                e.connect("changed", lambda w, k=key: debounce(w, lambda: xs.set(k, w.get_text()), 600))
+                sw.bind_property("active", e, "sensitive", SYNC)
+                p.row(label, e, hint)
+    return p
+
+
+def page_extension(uuid, title):
+    p = Page()
+    try:
+        if uuid not in _enabled("enabled-extensions"):
+            raise OSError
+        xs = XletSettings(uuid, uuid)
+    except (OSError, ValueError):
+        p.note("%s: %s" % (title, _("Nicht installiert oder nicht aktiviert.")))
+        return p
+    p.xlet(xs, "extension", title)
+    return p
+
+
+def page_dock():
+    p = Page()
+    s = gsettings("net.launchpad.plank.dock.settings", PLANK_PATH)
+    if not s:
+        p.note(_("Dock Plank ist nicht installiert."))
+        return p
+    p.section(_("Dock"))
+    themes = {"Default"}
+    for base in (os.path.join(HOME, ".local/share/plank/themes"), "/usr/share/plank/themes"):
+        try:
+            themes.update(n for n in os.listdir(base) if os.path.isfile(os.path.join(base, n, "dock.theme")))
+        except OSError:
+            pass
+    p.g_combo(s, "theme", _("Theme"), [(n, n) for n in sorted(themes, key=str.lower)])
+    p.g_spin(s, "icon-size", _("Symbolgröße"), 24, 128, 2, "px")
+    sw = p.g_switch(s, "zoom-enabled", _("Vergrößern beim Überfahren"))
+    z = p.g_spin(s, "zoom-percent", _("Vergrößerung"), 100, 400, 10, "%")
+    sw.bind_property("active", z, "sensitive", SYNC)
+    p.g_combo(s, "hide-mode", _("Ausblenden"),
+              [("none", _("Nie")), ("intelligent", _("Intelligent")), ("auto", _("Automatisch")),
+               ("dodge-maximized", _("Bei maximiertem Fenster")), ("window-dodge", _("Bei Fenstern")),
+               ("dodge-active", _("Beim aktiven Fenster"))])
+    p.g_combo(s, "position", _("Position"),
+              [("bottom", _("Unten")), ("top", _("Oben")), ("left", _("Links")), ("right", _("Rechts"))])
+    return p
+
+
+def page_background():
+    p = Page()
+    p.section(_("Tag/Nacht-Hintergrund"))
+    conf = os.path.join(CONF_DIR, "daynight.conf")
+    vals = {"CINNAMON_THEME_DAY_START": 7, "CINNAMON_THEME_NIGHT_START": 19}
+    try:
+        with open(conf, encoding="utf-8") as f:
+            for line in f:
+                k, _s, v = line.strip().partition("=")
+                if k in vals and v.strip().isdigit():
+                    vals[k] = int(v)
+    except OSError:
+        pass
+
+    def run_now():
+        helper = os.path.join(HOME, ".local/bin/cinnamon-theme-daynight")
+        if os.access(helper, os.X_OK):
+            subprocess.Popen([helper])
+
+    enabled = subprocess.run(["systemctl", "--user", "is-enabled", "-q", "cinnamon-theme-daynight.timer"],
+                             stderr=subprocess.DEVNULL).returncode == 0
+    sw = Gtk.Switch(active=enabled)
+
+    def toggle(w, _p):
+        subprocess.run(["systemctl", "--user", "enable" if w.get_active() else "disable", "--now",
+                        "cinnamon-theme-daynight.timer"], stderr=subprocess.DEVNULL)
+        if w.get_active():
+            run_now()
+    sw.connect("notify::active", toggle)
+    p.row(_("Automatisch umschalten"), sw)
+
+    def save():
+        os.makedirs(CONF_DIR, exist_ok=True)
+        with open(conf, "w", encoding="utf-8") as f:
+            for k, v in vals.items():
+                f.write("%s=%d\n" % (k, v))
+        run_now()
+
+    for key, label in (("CINNAMON_THEME_DAY_START", _("Tag ab")), ("CINNAMON_THEME_NIGHT_START", _("Nacht ab"))):
+        w = Gtk.SpinButton.new_with_range(0, 23, 1)
+        w.set_value(vals[key])
+
+        def changed(w, k=key):
+            vals[k] = w.get_value_as_int()
+            debounce(w, save, 600)
+        w.connect("value-changed", changed)
+        sw.bind_property("active", w, "sensitive", SYNC)
+        p.row("%s (%s)" % (label, _("Uhr (volle Stunde)")), w)
+    return p
+
+
+def page_desklets():
+    p = Page()
+    p.section(_("Sprache"))
+    lang_file = os.path.join(CONF_DIR, "desklet-language")
+    try:
+        with open(lang_file, encoding="utf-8") as f:
+            cur = f.read().strip()
+    except OSError:
+        cur = ""
+    w = Gtk.ComboBoxText()
+    for v, t in (("auto", _("Wie System")), ("de", "Deutsch"), ("en", "English")):
+        w.append(v, t)
+    w.set_active_id(cur if cur in ("de", "en") else "auto")
+
+    def changed(w):
+        v = w.get_active_id()
+        if v in ("de", "en"):
+            os.makedirs(CONF_DIR, exist_ok=True)
+            with open(lang_file, "w", encoding="utf-8") as f:
+                f.write(v + "\n")
+        elif os.path.exists(lang_file):
+            os.remove(lang_file)
+    w.connect("changed", changed)
+    p.row(_("Sprache der Desklets"), w)
+
+    for uuid, title in (("fastfetch@cinnamon-theme", _("Systeminfo")), ("sysmon@cinnamon-theme", _("Systemlast"))):
+        inst = desklet_instance(uuid)
+        try:
+            xs = XletSettings(uuid, inst) if inst else None
+        except (OSError, ValueError):
+            xs = None
+        if xs:
+            p.xlet(xs, "desklet", title)
+        else:
+            p.note("%s: %s" % (title, _("Nicht installiert oder nicht aktiviert.")))
+    return p
+
+
+# ------------------------------------------------------------------ Fenster
+class App(Gtk.Application):
+    def __init__(self, page=None):
+        super().__init__(application_id="de.little_tools.NebelEinstellungen")
+        self.page = page
+
+    def do_activate(self):
+        if self.get_active_window():
+            self.get_active_window().present()
+            return
+        win = Gtk.ApplicationWindow(application=self, title=_("Nebel-Einstellungen"))
+        win.set_default_size(880, 660)
+        win.set_icon_name("preferences-desktop-theme")
+        hb = Gtk.HeaderBar(show_close_button=True, title=_("Nebel-Einstellungen"))
+        win.set_titlebar(hb)
+
+        stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        pages = [
+            ("appearance", _("Darstellung"), page_appearance),
+            ("panel", _("Leiste"), page_panel),
+            ("menu", _("Mint-Menü"), lambda: page_extension("dock-menu@cinnamon-theme", _("Mint-Menü"))),
+            ("dock", _("Dock"), page_dock),
+            ("background", _("Hintergrund"), page_background),
+            ("desklets", _("Desklets"), page_desklets),
+            ("weather", _("Wetter"), lambda: page_extension("weather@cinnamon-theme", _("Wetter"))),
+        ]
+        for name, title, build in pages:
+            try:
+                page = build()
+            except Exception as e:  # eine fehlerhafte Seite soll das Programm nicht verhindern
+                page = Page()
+                page.note("%s: %s" % (title, e))
+            stack.add_titled(page, name, title)
+        side = Gtk.StackSidebar(stack=stack)
+        side.set_size_request(170, -1)
+        box = Gtk.Box()
+        box.pack_start(side, False, False, 0)
+        box.pack_start(stack, True, True, 0)
+        win.add(box)
+        win.show_all()
+        if self.page and stack.get_child_by_name(self.page):
+            stack.set_visible_child_name(self.page)
+
+
+if __name__ == "__main__":
+    # Aufruf: nebel-einstellungen [--page appearance|panel|menu|dock|background|desklets|weather]
+    start = sys.argv[sys.argv.index("--page") + 1] if "--page" in sys.argv[:-1] else None
+    App(start).run(None)
