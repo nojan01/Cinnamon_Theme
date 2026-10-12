@@ -543,6 +543,13 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   werden auf Bruchteile von Pixeln gesetzt (nicht gerundet), damit langsame Teilchen gleiten
   statt in 1-px-Schritten zu springen. Über RDP überträgt xrdp jedes Bild, das erzeugt
   Netzlast; Bildrate senken oder „Auch in RDP-Sitzungen zeigen“ ausschalten.
+- Spritzer auf dem Dock (Schalter „Spritzer auf dem Dock“, Standard an): Plank begrenzt
+  seine Klickfläche (X-Input-Shape) genau auf die sichtbare Leiste. `dockshape.py` liest sie
+  per ctypes (libXext `XShapeGetRectangles`, ShapeInput) aus; die Erweiterung ruft es beim
+  Start und während Regen alle 5 s asynchron auf (Fenster: Typ DOCK, Klasse Plank). Trifft
+  die Tropfenspitze die Oberkante, verschwindet der Tropfen und 2–5 Tröpfchen (1–2 px)
+  fliegen im Bogen hoch (Schwerkraft 1100 px/s², höchstens 0,8 s, insgesamt max. 220).
+  Bei ausgeblendetem Dock (Klickfläche < 20 px hoch) gibt es keine Spritzer.
 - 1.0.7 behebt: Beim Ausblenden blieb die Regen-Abdunkelung durch Rundung bei
   Deckkraft 3 hängen – das Ereignis endete nie, es wurde kein neues eingeplant.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen

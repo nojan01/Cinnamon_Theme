@@ -3,6 +3,8 @@
     "active": { "type": "switch", "default": true, "description": "Wettereffekte eingeschaltet" },
     "toggle-key": { "type": "keybinding", "default": "<Super><Alt>w", "description": "Tastenkürzel Ein/Aus" },
     "rain": { "type": "switch", "default": true, "description": "Regenschauer" },
+    "splash": { "type": "switch", "default": true, "description": "Spritzer auf dem Dock", "dependency": "rain",
+                "tooltip": "Regentropfen, die auf die Plank-Leiste treffen, zerspringen in kleine Spritzer." },
     "leaves": { "type": "switch", "default": true, "description": "Blätter im Wind" },
     "snow": { "type": "switch", "default": true, "description": "Schneefall" },
     "seasonal": { "type": "switch", "default": true, "description": "Nach Jahreszeit",

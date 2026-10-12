@@ -3,6 +3,7 @@
 // unregelmäßigen Abständen. Die Ebene liegt über Hintergrundbild, Desktop-Symbolen
 // und Desklets, aber immer unter allen Programmfenstern.
 const Clutter = imports.gi.Clutter;
+const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Meta = imports.gi.Meta;
 const St = imports.gi.St;
@@ -10,12 +11,14 @@ const Main = imports.ui.main;
 const Settings = imports.ui.settings;
 
 const UUID = "weather@cinnamon-theme";
+const SPLASH_MAX = 220;
 const LEAF_COLORS = [
     [0.82, 0.45, 0.14], [0.74, 0.27, 0.12], [0.88, 0.64, 0.20],
     [0.58, 0.35, 0.16], [0.64, 0.56, 0.22], [0.78, 0.36, 0.10],
 ];
 
 let weather = null;
+let extDir = "";
 
 function rand(a, b) { return a + Math.random() * (b - a); }
 function smooth(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
@@ -35,6 +38,7 @@ class Weather {
         this.settings.bind("fps", "fps", () => { if (this.timer) { this._stopTimer(); this._startTimer(); } });
         this.settings.bind("pause-covered", "pauseCovered", () => this._checkCovered());
         this.settings.bind("show-in-rdp", "showInRdp", () => this._checkCovered());
+        this.settings.bind("splash", "splash");
 
         this.isRdp = !!GLib.getenv("XRDP_SESSION");
         this.layer = new Clutter.Actor({ reactive: false, clip_to_allocation: true, visible: false });
@@ -44,7 +48,10 @@ class Weather {
         this._restack();
 
         this.parts = [];
-        this.pool = { rain: [], leaf: [], snow: [] };
+        this.pool = { rain: [], leaf: [], snow: [], splash: [] };
+        this.dock = null;          // sichtbare Plank-Leiste {x1, x2, y}
+        this.dockCheck = 0;
+        this.splashCount = 0;
         this.acc = { rain: 0, leaf: 0, snow: 0 };
         this.event = null;
         this.paused = false;
@@ -216,7 +223,50 @@ class Weather {
         if (tl) { tl.stop(); tl.run_dispose(); }
     }
 
+    // ------------------------------------------------------------ Dock (Spritzer)
+    // Plank begrenzt seine Klickfläche (X-Input-Shape) auf die sichtbare Leiste;
+    // dockshape.py liest sie aus.
+    _updateDock() {
+        this.dockCheck = GLib.get_monotonic_time();
+        let win = global.get_window_actors().map(a => a.meta_window)
+            .find(w => w.get_window_type() === Meta.WindowType.DOCK && /plank/i.test(w.get_wm_class() || ""));
+        if (!win || !this.splash) { this.dock = null; return; }
+        let r = win.get_buffer_rect();
+        try {
+            let proc = Gio.Subprocess.new(["python3", extDir + "/dockshape.py", win.get_description()],
+                                          Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
+            proc.communicate_utf8_async(null, null, (pr, res) => {
+                let out = "";
+                try { [, out] = pr.communicate_utf8_finish(res); } catch (e) { out = ""; }
+                let v = (out || "").trim().split(/\s+/).map(Number);
+                this.dock = v.length === 4 && v[3] >= 20 && v[2] >= 40
+                    ? { x1: r.x + v[0], x2: r.x + v[0] + v[2], y: r.y + v[1] } : null;
+            });
+        } catch (e) {
+            this.dock = null;
+        }
+    }
+
+    _spawnSplash(x, y, drop) {
+        let d = drop.d, n = 2 + Math.floor(Math.random() * (2 + d * 2));
+        for (let i = 0; i < n && this.splashCount < SPLASH_MAX; i++) {
+            let p = this._get("splash");
+            this.splashCount++;
+            let s = d > 0.6 && Math.random() < 0.5 ? 2 : 1;
+            p.actor.set_size(s, s);
+            p.a0 = Math.min(255, drop.actor.opacity * 1.3);
+            p.actor.opacity = p.a0;
+            p.vx = (Math.random() < 0.5 ? -1 : 1) * rand(30, 130) + drop.vx * 0.25;
+            p.vy = -rand(80, 210) * (0.6 + d * 0.6);
+            p.x = x + rand(-1.5, 1.5);
+            p.y = y - 1;
+            p.t = 0;
+            p.floor = y;
+        }
+    }
+
     _run() {
+        this._updateDock();
         this._restack();
         this.layer.show();
         if (!this.timer) this._startTimer();
@@ -267,6 +317,9 @@ class Weather {
         if (kind === "rain") {
             a = new Clutter.Actor({ reactive: false,
                 background_color: new Clutter.Color({ red: 205, green: 216, blue: 230, alpha: 255 }) });
+        } else if (kind === "splash") {
+            a = new Clutter.Actor({ reactive: false,
+                background_color: new Clutter.Color({ red: 215, green: 225, blue: 238, alpha: 255 }) });
         } else if (kind === "leaf") {
             a = new St.DrawingArea({ reactive: false });
             a.connect("repaint", area => this._drawLeaf(area));
@@ -289,6 +342,7 @@ class Weather {
     _free(i) {
         let p = this.parts[i];
         p.actor.hide();
+        if (p.kind === "splash") this.splashCount--;
         this.parts[i] = this.parts[this.parts.length - 1];
         this.parts.pop();
         this.pool[p.kind].push(p);
@@ -303,6 +357,7 @@ class Weather {
         p.vy = (750 + d * 650) * (0.9 + sz * 0.1);
         p.vx = windPx * 0.7;
         let len = Math.round((12 + d * 24) * sz);
+        p.d = d; p.len = len;
         p.actor.set_size(d > 0.75 ? 2 : 1, len);
         p.actor.opacity = Math.round(60 + d * 110);
         p.x = rand(-0.2 * this.W, 1.2 * this.W);
@@ -415,6 +470,9 @@ class Weather {
 
         let W = this.W, H = this.H;
         let rainRot = -Math.atan2(windPx * 0.7, 1000) * 180 / Math.PI;
+        let tilt = Math.sin(rainRot * Math.PI / 180);
+        if (this.splash && now - this.dockCheck > 5e6 && ev && ev.kinds.rain) this._updateDock();
+        let dock = this.splash ? this.dock : null;
         for (let i = this.parts.length - 1; i >= 0; i--) {
             let p = this.parts[i], a = p.actor;
             if (p.kind === "rain") {
@@ -422,8 +480,25 @@ class Weather {
                 p.x += p.vx * dt;
                 p.y += p.vy * dt;
                 if (p.y > H) { this._free(i); continue; }
+                if (dock && p.y + p.len >= dock.y) {
+                    // Spitze des (gedrehten) Tropfens
+                    let bx = p.x - tilt * p.len / 2;
+                    if (bx >= dock.x1 && bx <= dock.x2) {
+                        if (p.y + p.len - p.vy * dt < dock.y + 2) this._spawnSplash(bx, dock.y, p);
+                        this._free(i);
+                        continue;
+                    }
+                }
                 a.rotation_angle_z = rainRot;
                 a.set_position(Math.round(p.x), Math.round(p.y));
+            } else if (p.kind === "splash") {
+                p.t += dt;
+                p.vy += 1100 * dt;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                if (p.y > p.floor || p.t > 0.8) { this._free(i); continue; }
+                a.opacity = Math.round(p.a0 * Math.max(0, 1 - p.t / 0.8));
+                a.set_position(p.x, p.y);
             } else if (p.kind === "snow") {
                 p.y += p.vy * dt;
                 p.x += windPx * 0.25 * p.drift * dt;
@@ -461,7 +536,7 @@ class Weather {
     }
 }
 
-function init(metadata) {}
+function init(metadata) { extDir = metadata.path; }
 
 function enable() {
     weather = new Weather();
