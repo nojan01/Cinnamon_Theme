@@ -207,40 +207,93 @@ function plankColor(kf, key, def) {
     return def;
 }
 
-// Hintergrund des Mint-Menüs wie die Füllung des Plank-Docks (senkrechter
-// Verlauf FillStartColor → FillEndColor aus dock.theme). Die eingestellte
-// Deckkraft gilt oben, unten bleibt das Verhältnis aus dem Dock-Theme erhalten.
+// Hintergrund des Mint-Menüs im Grau der Plank-Füllung (FillStartColor aus
+// dock.theme) mit der eingestellten Deckkraft, Rahmen wie OuterStrokeColor.
+// Kein Verlauf: St zeichnet Verläufe mit Transparenz nur in der Endfarbe.
+// Kein Schatten: St legt box-shadow unter die ganze (durchsichtige) Fläche,
+// das Menü wirkte dadurch dunkler als das Dock.
 function menuStyle() {
     let kf = plankTheme();
-    let a = plankColor(kf, "FillStartColor", [60, 60, 60, 190]);
-    let b = plankColor(kf, "FillEndColor", [35, 35, 35, 150]);
-    let top = menuOpacity / 100;
-    let bottom = Math.min(1, top * (a[3] > 0 ? b[3] / a[3] : 1));
-    let rgba = (c, al) => "rgba(" + c[0] + ", " + c[1] + ", " + c[2] + ", " + al.toFixed(2) + ")";
-    return "background-gradient-direction: vertical;" +
-        " background-gradient-start: " + rgba(a, top) + ";" +
-        " background-gradient-end: " + rgba(b, bottom) + ";" +
-        " background-color: " + rgba(a, top) + ";";
+    let c = plankColor(kf, "FillStartColor", [60, 60, 60, 190]);
+    let o = plankColor(kf, "OuterStrokeColor", [150, 150, 150, 140]);
+    return "background-color: rgba(" + c[0] + ", " + c[1] + ", " + c[2] + ", " + (menuOpacity / 100).toFixed(2) + ");" +
+        " box-shadow: none;" +
+        " border: 1px solid rgba(" + o[0] + ", " + o[1] + ", " + o[2] + ", " + (o[3] / 255).toFixed(2) + ");";
+}
+
+// Seitenleiste (.appmenu-sidebar) hat im Theme eine eigene dunklere Füllung
+const SIDEBAR_STYLE = "background-color: transparent;";
+
+function findSidebar(actor, depth) {
+    if (actor.style_class && actor.style_class.split(" ").includes("appmenu-sidebar"))
+        return actor;
+    if (depth > 6)
+        return null;
+    for (let ch of actor.get_children()) {
+        let f = findSidebar(ch, depth + 1);
+        if (f)
+            return f;
+    }
+    return null;
+}
+
+const OWN_PROPS = ["background-color", "box-shadow", "border"];
+
+// Das Menü-Applet setzt beim Öffnen eigene Inline-Stile (max-height/-width) und
+// überschreibt dabei unseren – daher eigene Angaben ergänzen statt ersetzen.
+function mergeStyle(actor, own) {
+    let keep = (actor.get_style() || "").split(";").map(d => d.trim())
+        .filter(d => d && !OWN_PROPS.includes(d.split(":")[0].trim()));
+    actor.set_style(keep.concat([own]).join("; "));
+}
+
+function stripStyle(actor) {
+    let keep = (actor.get_style() || "").split(";").map(d => d.trim())
+        .filter(d => d && !OWN_PROPS.includes(d.split(":")[0].trim()));
+    actor.set_style(keep.length ? keep.join("; ") + ";" : null);
+}
+
+let currentStyle = null;
+
+function styleMenu(menu) {
+    mergeStyle(menu.actor, currentStyle || (currentStyle = menuStyle()));
+    let sb = findSidebar(menu.actor, 0);
+    if (sb)
+        sb.set_style(SIDEBAR_STYLE);
 }
 
 function applyOpacity() {
-    let style = menuStyle();
+    currentStyle = menuStyle();
     let instances = AppletManager.getRunningInstancesForUuid(MENU_UUID) || [];
     styledMenus = styledMenus.filter(m => instances.some(a => a.menu === m) && !m.actor.is_finalized());
     for (let applet of instances) {
         let menu = applet.menu;
         if (!menu || menu.actor.is_finalized())
             continue;
-        menu.actor.set_style(style);
-        if (!styledMenus.includes(menu))
+        styleMenu(menu);
+        if (!styledMenus.includes(menu)) {
+            menu.__nebelStyleId = menu.connect("open-state-changed", (m, open) => {
+                if (open)
+                    styleMenu(m);
+            });
             styledMenus.push(menu);
+        }
     }
 }
 
 function resetOpacity() {
-    for (let menu of styledMenus)
-        if (!menu.actor.is_finalized())
-            menu.actor.set_style(null);
+    for (let menu of styledMenus) {
+        if (menu.__nebelStyleId) {
+            menu.disconnect(menu.__nebelStyleId);
+            delete menu.__nebelStyleId;
+        }
+        if (!menu.actor.is_finalized()) {
+            stripStyle(menu.actor);
+            let sb = findSidebar(menu.actor, 0);
+            if (sb)
+                sb.set_style(null);
+        }
+    }
     styledMenus = [];
 }
 
