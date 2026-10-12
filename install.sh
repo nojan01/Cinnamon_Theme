@@ -155,7 +155,7 @@ install_dependencies() {
   done
   # das alte plank kollidiert mit plank-reloaded und wird von apt ersetzt
   [ ${#missing[@]} -eq 0 ] && { log "Alle benötigten Pakete sind vorhanden"; return; }
-  log "Pakete installieren: ${missing[*]} (Passwort wird abgefragt)"
+  log "Pakete installieren: ${missing[*]} (Administratorrechte, ggf. Passwort)"
   root_script install-packages.sh "${missing[@]}" \
     || die "Paketinstallation fehlgeschlagen oder abgebrochen: ${missing[*]}"
   command -v zenity >/dev/null && [ -n "${DISPLAY:-}" ] && [ "$NO_GUI" = 0 ] && GUI=1
@@ -440,7 +440,7 @@ do_settings() {
 }
 
 do_lightdm() {
-  log "Anmeldebildschirm (Passwort wird abgefragt)"
+  log "Anmeldebildschirm (Administratorrechte, ggf. Passwort)"
   local cur=(); [ -f "$HOME/.icons/Nebel-Cursor/index.theme" ] && cur=(--cursor "$HOME/.icons/Nebel-Cursor")
   if root_script install-lightdm.sh "${cur[@]}"; then mark lightdm; else warn "Anmeldebildschirm nicht eingerichtet"; fi
 }

@@ -31,7 +31,8 @@ bash install.sh --uninstall  # alles rückgängig machen
 
 Alle benötigten Programme werden automatisch mitinstalliert, auch fastfetch (PPA
 `zhangsongcui3371/fastfetch`) und Plank Reloaded (Paketquelle von zquestz). Für diese
-Schritte und für den Anmeldebildschirm wird das Passwort abgefragt.
+Schritte und für den Anmeldebildschirm sind Administratorrechte nötig; das Passwort wird
+abgefragt, sofern das System (polkit) nicht ohnehin ohne Passwort freigibt.
 
 Bausteine: Schrift JetBrains Mono, Cinnamon-Theme „Nebel“, Hintergrundbild,
 Tag/Nacht-Hintergrund, Darstellung (Mint-L-Grey, Bibata), Leiste, Desklets
