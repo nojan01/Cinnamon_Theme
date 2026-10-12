@@ -471,8 +471,11 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   `gdbus call --session --dest org.Cinnamon --object-path /de/little_tools/NebelMenu --method de.little_tools.NebelMenu.Open`.
   Die Erweiterung `dock-menu@cinnamon-theme` stellt diese Methode bereit und
   öffnet das Original-Mint-Menü (`menu@cinnamon.org`, mit Suchfeld) unten im
-  Arbeitsbereich direkt über dem Dock, waagerecht über der Mausposition
-  (ersetzt dafür vorübergehend `_calculatePosition` des Menüs). Erneuter Aufruf
+  Arbeitsbereich direkt über dem Dock, linksbündig mit dem Außenrand des Docks
+  (ersetzt dafür vorübergehend `_calculatePosition` des Menüs). Der Rand wird
+  berechnet aus Plank-D-Bus `GetHoverPosition` des ersten Dock-Eintrags (Mitte)
+  − halbe `icon-size` − (`HorizPadding` + `ItemPadding`/2)/10 × `icon-size`
+  − `LineWidth` aus `dock.theme`; ohne Plank-Daten mittig über der Maus. Erneuter Aufruf
   schließt es. In `plank/default-apps.conf` steht dafür `menu`; ohne Baustein
   `dockmenu` wird weiter das Docklet verwendet. Bei „nur ergänzen“ ersetzt der
   Installer ein vorhandenes Docklet `applications` an derselben Stelle.

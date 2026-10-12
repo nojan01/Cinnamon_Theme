@@ -72,8 +72,65 @@ function patchAll() {
     return GLib.SOURCE_CONTINUE;
 }
 
-// Mint-Menü über der Mausposition am unteren Rand des Arbeitsbereichs öffnen
-// (Plank reserviert seinen Platz, das Menü sitzt also direkt über dem Dock).
+const PLANK_PATH = "/net/launchpad/plank/docks/dock1/";
+
+function readKeyFile(path) {
+    let kf = new GLib.KeyFile();
+    try {
+        kf.load_from_file(path, GLib.KeyFileFlags.NONE);
+        return kf;
+    } catch (e) {
+        return null;
+    }
+}
+
+function themeValue(kf, key, def) {
+    if (kf) {
+        for (let group of ["PlankDockTheme", "PlankTheme"]) {
+            try { return kf.get_double(group, key); } catch (e) {}
+        }
+    }
+    return def;
+}
+
+// Linker Außenrand des Plank-Docks: Mitte des ersten Eintrags (Plank-D-Bus
+// GetHoverPosition) minus halbe Symbolgröße, Theme-Abstände und Rahmen.
+function plankLeftEdge() {
+    try {
+        let s = new Gio.Settings({ schema_id: "net.launchpad.plank.dock.settings", path: PLANK_PATH });
+        let first = s.get_strv("dock-items")[0];
+        if (!first)
+            return null;
+        let dir = GLib.build_filenamev([GLib.get_user_config_dir(), "plank", "dock1", "launchers"]);
+        let item = readKeyFile(GLib.build_filenamev([dir, first]));
+        let uri = item && item.get_string("PlankDockItemPreferences", "Launcher");
+        if (!uri)
+            return null;
+        let res = Gio.DBus.session.call_sync("net.launchpad.plank", "/net/launchpad/plank/dock1",
+            "net.launchpad.plank.Items", "GetHoverPosition", new GLib.Variant("(s)", [uri]),
+            null, Gio.DBusCallFlags.NONE, 300, null);
+        let [cx, , pos, ok] = res.deep_unpack();
+        if (!ok || pos !== 3) // 3 = unten
+            return null;
+        let size = s.get_int("icon-size");
+        let theme = s.get_string("theme");
+        let kf = null;
+        for (let base of [GLib.build_filenamev([GLib.get_user_data_dir(), "plank", "themes"]), "/usr/share/plank/themes"]) {
+            kf = readKeyFile(GLib.build_filenamev([base, theme, "dock.theme"]));
+            if (kf)
+                break;
+        }
+        let pad = (themeValue(kf, "HorizPadding", 0) + themeValue(kf, "ItemPadding", 0) / 2) / 10 * size;
+        return Math.round(cx - size / 2 - pad - themeValue(kf, "LineWidth", 1));
+    } catch (e) {
+        global.logError("dock-menu@cinnamon-theme: Plank " + e);
+        return null;
+    }
+}
+
+// Mint-Menü am unteren Rand des Arbeitsbereichs öffnen (Plank reserviert seinen
+// Platz, das Menü sitzt also direkt über dem Dock), linksbündig mit dem Dock;
+// ohne Plank-Daten mittig über der Mausposition.
 function openAtDock() {
     let applet = (AppletManager.getRunningInstancesForUuid(MENU_UUID) || [])[0];
     if (!applet || !applet.menu)
@@ -84,6 +141,7 @@ function openAtDock() {
         return;
     }
     let [px] = global.get_pointer();
+    let left = plankLeftEdge();
     let wa = global.workspace_manager.get_active_workspace()
         .get_work_area_for_monitor(global.display.get_current_monitor());
     if (!menu.__nebelOrigCalc)
@@ -100,7 +158,7 @@ function openAtDock() {
         if (!this.actor.visible)
             this.box.show();
         let [, , natW, natH] = this.actor.get_preferred_size();
-        let x = Math.round(px - natW / 2);
+        let x = left !== null ? left : Math.round(px - natW / 2);
         x = Math.max(wa.x, Math.min(x, wa.x + wa.width - natW));
         this.sideFlipped = true;
         return [x, Math.max(wa.y, wa.y + wa.height - natH)];
