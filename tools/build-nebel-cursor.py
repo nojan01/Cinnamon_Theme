@@ -67,8 +67,12 @@ def shrink(px, w, h, nw, nh):
     rim = Image.new("RGBA", (w, h), (255, 255, 255, 0))
     rim.putalpha(im.getchannel("A").filter(ImageFilter.MaxFilter(3)))
     rim.alpha_composite(im)
-    small = np.asarray(rim.convert("RGBa").resize((nw, nh), Image.LANCZOS)).astype(np.uint32)
-    return ((small[..., 3] << 24) | (small[..., 0] << 16) | (small[..., 1] << 8) | small[..., 2]).reshape(-1)
+    small = np.asarray(rim.resize((nw, nh), Image.LANCZOS, reducing_gap=None)).astype(np.float32)
+    # Lanczos schwingt über: keine Farbe dunkler als das Nebel-Grau, Alpha 0…255
+    al = np.clip(small[..., 3], 0, 255)
+    rgb = np.clip(small[..., :3], GREY, 255) * al[..., None] / 255.0
+    v = np.rint(np.concatenate([rgb, al[..., None]], -1)).astype(np.uint32)
+    return ((v[..., 3] << 24) | (v[..., 0] << 16) | (v[..., 1] << 8) | v[..., 2]).reshape(-1)
 
 
 def convert(data):
