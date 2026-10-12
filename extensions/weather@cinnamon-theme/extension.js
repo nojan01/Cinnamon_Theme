@@ -62,6 +62,18 @@ class Weather {
         this._later = 0;
 
         this._restackId = global.display.connect("restacked", () => this._queueRestack());
+        // Dock-Größe geändert (Symbolgröße, Einträge, Thema, Position) → Leiste neu lesen
+        this.plankSettings = null;
+        this.dockTimers = [];
+        let src = Gio.SettingsSchemaSource.get_default();
+        if (src && src.lookup("net.launchpad.plank.dock.settings", true)) {
+            this.plankSettings = Gio.Settings.new_with_path("net.launchpad.plank.dock.settings",
+                                                            "/net/launchpad/plank/docks/dock1/");
+            this._plankId = this.plankSettings.connect("changed", () => this._dockChanged());
+        }
+        this._mapId = global.window_manager.connect("map", (wm, a) => {
+            if (a.meta_window.get_window_type() === Meta.WindowType.DOCK) this._dockChanged();
+        });
         this._monitorsId = Main.layoutManager.connect("monitors-changed", () => this._resize());
         this._resize();
         this._bindKey();
@@ -239,12 +251,31 @@ class Weather {
                 let out = "";
                 try { [, out] = pr.communicate_utf8_finish(res); } catch (e) { out = ""; }
                 let v = (out || "").trim().split(/\s+/).map(Number);
-                this.dock = v.length === 4 && v[3] >= 20 && v[2] >= 40
-                    ? { x1: r.x + v[0], x2: r.x + v[0] + v[2], y: r.y + v[1] } : null;
+                if (v.length !== 4 || v[3] < 20 || v[2] < 40) { this.dock = null; return; }
+                // Beim Zoomen (Maus über dem Dock) vergrößert Plank die Klickfläche kurz –
+                // dann die alte Leiste behalten. Maßstab: der für das Dock reservierte Rand.
+                let mon = Main.layoutManager.primaryMonitor;
+                let wa = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(mon.index);
+                let strut = mon.y + mon.height - (wa.y + wa.height);
+                if (v[3] > (strut > 0 ? strut + 4 : 150)) return;
+                this.dock = { x1: r.x + v[0], x2: r.x + v[0] + v[2], y: r.y + v[1] };
             });
         } catch (e) {
             this.dock = null;
         }
+    }
+
+    // Plank zeichnet nach einer Änderung kurz später neu; mehrmals nachlesen
+    _dockChanged() {
+        for (let id of this.dockTimers) GLib.source_remove(id);
+        this.dockTimers = [300, 1000, 2500].map(ms => {
+            let id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+                this.dockTimers = this.dockTimers.filter(x => x !== id);
+                this._updateDock();
+                return GLib.SOURCE_REMOVE;
+            });
+            return id;
+        });
     }
 
     _spawnSplash(x, y, drop) {
@@ -471,7 +502,7 @@ class Weather {
         let W = this.W, H = this.H;
         let rainRot = -Math.atan2(windPx * 0.7, 1000) * 180 / Math.PI;
         let tilt = Math.sin(rainRot * Math.PI / 180);
-        if (this.splash && now - this.dockCheck > 5e6 && ev && ev.kinds.rain) this._updateDock();
+        if (this.splash && now - this.dockCheck > 2e6 && ev && ev.kinds.rain) this._updateDock();
         let dock = this.splash ? this.dock : null;
         for (let i = this.parts.length - 1; i >= 0; i--) {
             let p = this.parts[i], a = p.actor;
@@ -530,6 +561,9 @@ class Weather {
         if (this._later) Meta.later_remove(this._later);
         Main.keybindingManager.removeHotKey(UUID + "-toggle");
         global.display.disconnect(this._restackId);
+        global.window_manager.disconnect(this._mapId);
+        if (this.plankSettings) this.plankSettings.disconnect(this._plankId);
+        for (let id of this.dockTimers) GLib.source_remove(id);
         Main.layoutManager.disconnect(this._monitorsId);
         this.settings.finalize();
         this.layer.destroy();

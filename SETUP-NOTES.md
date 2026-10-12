@@ -550,6 +550,11 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   die Tropfenspitze die Oberkante, verschwindet der Tropfen und 2–5 Tröpfchen (1–2 px)
   fliegen im Bogen hoch (Schwerkraft 1100 px/s², höchstens 0,8 s, insgesamt max. 220).
   Bei ausgeblendetem Dock (Klickfläche < 20 px hoch) gibt es keine Spritzer.
+  Größenänderungen: Bei jeder Änderung der Plank-Einstellungen (`dock1`: Symbolgröße,
+  Einträge, Thema, Position) und beim Erscheinen eines Dock-Fensters wird die Leiste nach
+  0,3 / 1 / 2,5 s neu gelesen, während Regen zusätzlich alle 2 s. Ist die Klickfläche höher
+  als der reservierte Dock-Rand (Bildschirmunterkante − Arbeitsbereich, +4 px) – etwa
+  beim Zoomen –, bleibt die alte Leiste gültig. Getestet: 36 / 52 / 64 px.
 - 1.0.7 behebt: Beim Ausblenden blieb die Regen-Abdunkelung durch Rundung bei
   Deckkraft 3 hängen – das Ereignis endete nie, es wurde kein neues eingeplant.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
