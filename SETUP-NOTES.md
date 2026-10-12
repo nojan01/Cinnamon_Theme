@@ -522,6 +522,12 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   maximiertem/Vollbild-Fenster, Anzeige in RDP-Sitzungen (seit 1.0.7 Standard an,
   damit sich die Effekte auch per RDP testen lassen; unter xrdp rendert llvmpipe per
   Prozessor, bei Bedarf abschalten).
+- Takt: Die Animation läuft über eine `Clutter.Timeline` (Signal `new-frame`) im Zeichentakt
+  der Bühne, nicht über einen GLib-Zeitgeber – sonst wurden Positionen gelegentlich
+  übersprungen oder doppelt gezeigt. Die Bildrate ist nur noch Obergrenze. Blätter und Schnee
+  werden auf Bruchteile von Pixeln gesetzt (nicht gerundet), damit langsame Teilchen gleiten
+  statt in 1-px-Schritten zu springen. Über RDP überträgt xrdp jedes Bild, das erzeugt
+  Netzlast; Bildrate senken oder „Auch in RDP-Sitzungen zeigen“ ausschalten.
 - 1.0.7 behebt: Beim Ausblenden blieb die Regen-Abdunkelung durch Rundung bei
   Deckkraft 3 hängen – das Ereignis endete nie, es wurde kein neues eingeplant.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen

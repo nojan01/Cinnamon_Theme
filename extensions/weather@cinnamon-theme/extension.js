@@ -196,16 +196,24 @@ class Weather {
 
     // ------------------------------------------------------------ Ablauf
     _startTimer() {
+        // Clutter-Zeitleiste statt GLib-Zeitgeber: läuft im Zeichentakt der Bühne, damit jede
+        // berechnete Position auch genau einmal gezeigt wird (kein Überspringen/Verdoppeln).
+        // Die Bildrate wirkt als Obergrenze.
         this.last = GLib.get_monotonic_time();
-        this.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.round(1000 / Math.max(5, this.fps)), () => {
+        let tl = new Clutter.Timeline({ duration: 1000, repeat_count: -1 });
+        tl.connect("new-frame", () => {
+            let now = GLib.get_monotonic_time();
+            if ((now - this.last) / 1000 < 1000 / Math.max(5, this.fps) - 4) return;
             this._step();
-            return this.timer ? GLib.SOURCE_CONTINUE : GLib.SOURCE_REMOVE;
         });
+        this.timer = tl;
+        tl.start();
     }
 
     _stopTimer() {
-        if (this.timer) GLib.source_remove(this.timer);
+        let tl = this.timer;
         this.timer = 0;
+        if (tl) { tl.stop(); tl.run_dispose(); }
     }
 
     _run() {
@@ -421,7 +429,7 @@ class Weather {
                 p.x += windPx * 0.25 * p.drift * dt;
                 if (p.y > H + 10) { this._free(i); continue; }
                 let x = p.x + Math.sin(t * p.freq + p.ph) * p.amp;
-                a.set_position(Math.round(x), Math.round(p.y));
+                a.set_position(x, p.y);  // Bruchteile: langsame Teilchen gleiten statt zu springen
             } else {
                 p.t += dt;
                 let want = windPx * p.drag + Math.sin(p.t * p.f1 + p.ph) * 45;
@@ -433,7 +441,7 @@ class Weather {
                 let fl = Math.cos(p.t * p.flip + p.ph);
                 a.scale_x = Math.abs(fl) < 0.15 ? (fl < 0 ? -0.15 : 0.15) : fl;
                 a.rotation_angle_z = p.rot;
-                a.set_position(Math.round(p.x), Math.round(p.y));
+                a.set_position(p.x, p.y);
             }
         }
 
