@@ -152,17 +152,26 @@ def is_icon_theme(p):
 class XletSettings:
     """Einstellungsdatei eines Cinnamon-Xlets; Änderungen werden Cinnamon gemeldet."""
 
-    def __init__(self, uuid, instance):
-        self.uuid, self.instance = uuid, str(instance)
+    def __init__(self, uuid, instance, desklet=False):
+        self.uuid, self.instance, self.desklet = uuid, str(instance), desklet
         self.path = os.path.join(SPICES, uuid, self.instance + ".json")
         with open(self.path, encoding="utf-8") as f:
             self.data = json.load(f)
+
+    def _follow(self):
+        # Desklets können neu angelegt werden (andere Nummer), während das Programm läuft
+        if self.desklet:
+            inst = desklet_instance(self.uuid)
+            if inst and inst != self.instance:
+                self.instance = inst
+                self.path = os.path.join(SPICES, self.uuid, inst + ".json")
 
     def get(self, key):
         e = self.data.get(key, {})
         return e.get("value", e.get("default"))
 
     def set(self, key, value):
+        self._follow()
         try:
             with open(self.path, encoding="utf-8") as f:
                 self.data = json.load(f)
@@ -386,9 +395,11 @@ class Page(Gtk.ScrolledWindow):
                 src.connect("notify::active", refresh)
         refresh()
 
-        args = ["xlet-settings", kind, xs.uuid] + ([] if kind == "extension" else ["-i", xs.instance])
+        def open_all(_w):
+            xs._follow()
+            subprocess.Popen(["xlet-settings", kind, xs.uuid] + ([] if kind == "extension" else ["-i", xs.instance]))
         more = Gtk.Button(label=_("Alle Optionen …"), halign=Gtk.Align.END)
-        more.connect("clicked", lambda _w: subprocess.Popen(args))
+        more.connect("clicked", open_all)
         self.box.pack_start(more, False, False, 0)
         self.grid = None
 
@@ -706,7 +717,7 @@ def page_desklets():
     for uuid, title in (("fastfetch@cinnamon-theme", _("Systeminfo")), ("sysmon@cinnamon-theme", _("Systemlast"))):
         inst = desklet_instance(uuid)
         try:
-            xs = XletSettings(uuid, inst) if inst else None
+            xs = XletSettings(uuid, inst, desklet=True) if inst else None
         except (OSError, ValueError):
             xs = None
         if xs:

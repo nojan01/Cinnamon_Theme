@@ -260,13 +260,15 @@ do_desklets() {
   cur=$(gsettings get org.cinnamon enabled-desklets)
   new=$(python3 -c "
 import ast,sys
-cur=sys.argv[1].replace('@as ','')
-l=[e for e in ast.literal_eval(cur) if not e.split(':')[0].endswith('@cinnamon-theme')]
+# vorhandene Desklets behalten Nummer, Position und Einstellungen; nur fehlende ergänzen
+l=ast.literal_eval(sys.argv[1].replace('@as ',''))
+have={e.split(':')[0] for e in l}
 i=int(sys.argv[2]); x=sys.argv[3]
-l+=['sysmon@cinnamon-theme:%d:%s:60'%(i,x),'fastfetch@cinnamon-theme:%d:%s:375'%(i+1,x)]
-print(repr(l))" "$cur" "$id" "$x")
+for u,y in (('sysmon@cinnamon-theme',60),('fastfetch@cinnamon-theme',375)):
+    if u not in have: l.append('%s:%d:%s:%d'%(u,i,x,y)); i+=1
+print(repr(l)); print(i, file=sys.stderr)" "$cur" "$id" "$x" 2>"$STATE/.next-id")
   gset org.cinnamon enabled-desklets "$new"
-  gset org.cinnamon next-desklet-id $(( id + 2 ))
+  gset org.cinnamon next-desklet-id "$(cat "$STATE/.next-id")"; rm -f "$STATE/.next-id"
   # Conky-Uhr von CBlue abschalten, falls vorhanden
   local a="$HOME/.config/autostart/conky-timefull.desktop"
   if [ -f "$a" ] && ! grep -q '^Hidden=true' "$a"; then
