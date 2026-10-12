@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 """Erzeugt den Mauszeiger „Nebel-Cursor“: Bibata-Modern-Classic mit dunkelgrauer
-statt schwarzer Füllung (weißer Rand bleibt). Quelle: Paket mint-cursor-themes.
+statt schwarzer Füllung (weißer Rand bleibt), zusätzlich in 16/18/20 px. Quelle: Paket mint-cursor-themes.
 
     python3 tools/build-nebel-cursor.py [ziel]   (Standard: ~/.icons/Nebel-Cursor)
 """
@@ -30,18 +30,67 @@ def recolor(pixels):
     return (a << 24) | (pre[0] << 16) | (pre[1] << 8) | pre[2]
 
 
+SMALL = (16, 18, 20)  # Bibata hat erst ab 22 px; kleinere Stufen werden heruntergerechnet
+
+
+def area_matrix(n_in, n_out):
+    """Flächengewichte für das Verkleinern n_in -> n_out (Box-Filter)."""
+    m = np.zeros((n_out, n_in), np.float64)
+    r = n_in / n_out
+    for o in range(n_out):
+        a, b = o * r, (o + 1) * r
+        for i in range(int(a), min(n_in, int(np.ceil(b)))):
+            m[o, i] = max(0.0, min(b, i + 1) - max(a, i))
+    return m / r
+
+
+def shrink(px, w, h, nw, nh):
+    img = px.reshape(h, w)
+    my, mx = area_matrix(h, nh), area_matrix(w, nw)
+    out = 0
+    for sh in (24, 16, 8, 0):  # premultiplied ARGB: Kanäle einzeln mitteln
+        ch = ((img >> sh) & 0xFF).astype(np.float64)
+        v = np.clip(np.rint(my @ ch @ mx.T), 0, 255).astype(np.uint32)
+        out = out | (v << sh)
+    return out.reshape(-1)
+
+
 def convert(data):
-    data = bytearray(data)
     _, hdr, _, ntoc = struct.unpack_from("<4sIII", data, 0)
+    chunks = []  # (typ, subtyp, bytes)
+    images = {}  # Nennmaß -> [(w, h, xhot, yhot, delay, pixel)]
     for i in range(ntoc):
-        typ, _, pos = struct.unpack_from("<III", data, hdr + i * 12)
+        typ, sub, pos = struct.unpack_from("<III", data, hdr + i * 12)
         if typ != IMAGE:
+            chdr, _t, _s, _v, ln = struct.unpack_from("<5I", data, pos)
+            chunks.append((typ, sub, data[pos:pos + chdr + ln]))
             continue
-        chdr, _, _, _, w, h = struct.unpack_from("<6I", data, pos)
+        chdr, _t, _s, ver, w, h, xh, yh, delay = struct.unpack_from("<9I", data, pos)
         start = pos + chdr
-        px = np.frombuffer(bytes(data[start:start + w * h * 4]), dtype="<u4").astype(np.uint32)
-        data[start:start + w * h * 4] = recolor(px).astype("<u4").tobytes()
-    return bytes(data)
+        px = recolor(np.frombuffer(data[start:start + w * h * 4], dtype="<u4").astype(np.uint32))
+        images.setdefault(sub, []).append((w, h, xh, yh, delay, px))
+    for size in SMALL:
+        if size in images or not images:
+            continue
+        src = min((s for s in images if s >= 2 * size), default=max(images))
+        f = size / src
+        frames = []
+        for w, h, xh, yh, delay, px in images[src]:
+            nw, nh = max(1, round(w * f)), max(1, round(h * f))
+            frames.append((nw, nh, min(nw - 1, round(xh * f)), min(nh - 1, round(yh * f)),
+                           delay, shrink(px, w, h, nw, nh)))
+        images[size] = frames
+    for sub in sorted(images):
+        for w, h, xh, yh, delay, px in images[sub]:
+            body = struct.pack("<9I", 36, IMAGE, sub, 1, w, h, xh, yh, delay) + px.astype("<u4").tobytes()
+            chunks.append((IMAGE, sub, body))
+    head = struct.pack("<4sIII", b"Xcur", 16, 0x10000, len(chunks))
+    pos = 16 + 12 * len(chunks)
+    toc, body = b"", b""
+    for typ, sub, b in chunks:
+        toc += struct.pack("<III", typ, sub, pos + len(body))
+        body += b
+    return head + toc + body
 
 
 def main():
