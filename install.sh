@@ -109,7 +109,11 @@ stop_plank() {
   local p; for p in $(pgrep -u "$USER" -x plank); do kill "$p"; done
   for _ in 1 2 3 4 5 6 7 8 9 10; do plank_running || return 0; sleep 0.5; done
 }
-start_plank() { command -v plank >/dev/null && setsid plank >/dev/null 2>&1 < /dev/null & }
+start_plank() { # nur den Startbefehl in den Hintergrund – eine Subshell würde auf Plank warten und
+  # die Ausgabeleitung offen halten (Nebel-Einstellungen bliebe dann bei „Läuft …“)
+  command -v plank >/dev/null || return 0
+  setsid plank >/dev/null 2>&1 < /dev/null &
+}
 
 # ---------------------------------------------------------------- Bausteine
 # Benötigte Pakete je Baustein (werden automatisch mitinstalliert)
