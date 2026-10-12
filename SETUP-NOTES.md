@@ -298,7 +298,8 @@ for s in org.cinnamon.desktop.interface org.gnome.desktop.interface; do
   gsettings set $s gtk-theme    'Mint-L-Dark-Grey'
   gsettings set $s icon-theme   'Mint-L-Grey'
 done
-gsettings set org.cinnamon.desktop.interface cursor-size 23
+gsettings set org.cinnamon.desktop.interface cursor-size 24   # früher 23 – gibt es im Thema nicht
+printf '[icon theme]\nInherits=Nebel-Cursor\n' > ~/.icons/default/index.theme   # ebenso ~/.local/share/icons/default
 gsettings set org.x.apps.portal color-scheme 'prefer-dark'
 gsettings set org.cinnamon.desktop.interface menus-have-icons true
 gsettings set org.cinnamon.desktop.interface buttons-have-icons false
@@ -572,6 +573,17 @@ Alle Änderungen wirken sofort:
 | Hintergrund | Tag/Nacht an/aus, Uhrzeiten | `systemctl --user enable/disable --now cinnamon-theme-daynight.timer`; `~/.config/cinnamon-theme/daynight.conf`, danach einmal `cinnamon-theme-daynight` |
 | Desklets | Sprache, Systeminfo, Systemlast | Datei `~/.config/cinnamon-theme/desklet-language`; Desklet-Einstellungen wie unten |
 | Wetter | alle Optionen der Erweiterung, Knöpfe „Regen jetzt“ … | Erweiterung `weather@cinnamon-theme` |
+
+**Mauszeiger:** Die Zeigergröße bietet nur die Größen an, die das gewählte Zeigerthema
+enthält (aus der Xcursor-Datei `cursors/left_ptr`). Zwischengrößen wie 20 oder 23 werden auf
+die nächste vorhandene gerundet, deshalb änderte sich vorher sichtbar nichts. Ein Wechsel des
+Zeigerthemas schreibt außerdem `~/.icons/default/index.theme` und
+`~/.local/share/icons/default/index.theme` (`Inherits=<Thema>`), so wie Cinnamons Themen-Modul.
+
+**Farbschema:** `org.x.apps.portal color-scheme` allein wirkt nur bei Programmen mit
+Dunkelmodus (libadwaita, Firefox …). „Hell“ und „Dunkel“ wechseln daher auch das GTK-Thema auf
+die passende Variante (Mint-L-Grey ↔ Mint-L-Dark-Grey, Mint-Y ↔ Mint-Y-Dark, Adwaita ↔
+Adwaita-dark), falls es sie gibt. „Programme entscheiden“ lässt das Thema unverändert.
 
 **Xlet-Einstellungen (Erweiterungen, Desklets, Applets)** werden aus der Datei
 `~/.config/cinnamon/spices/<uuid>/<instanz>.json` gelesen und die Bedienelemente aus

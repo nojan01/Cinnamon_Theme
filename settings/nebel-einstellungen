@@ -5,6 +5,7 @@
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 
@@ -136,6 +137,73 @@ def theme_names(kind, check):
         except OSError:
             pass
     return sorted(names, key=str.lower)
+
+
+ICON_BASES = [os.path.join(HOME, ".icons"), os.path.join(HOME, ".local/share/icons"), "/usr/share/icons"]
+
+
+def theme_dir(kind, name):
+    bases = ICON_BASES if kind == "icons" else [
+        os.path.join(HOME, ".themes"), os.path.join(HOME, ".local/share/themes"), "/usr/share/themes"]
+    for b in bases:
+        if os.path.isdir(os.path.join(b, name)):
+            return os.path.join(b, name)
+    return None
+
+
+def cursor_sizes(theme):
+    """Größen, die das Zeigerthema tatsächlich enthält (aus der Xcursor-Datei left_ptr)."""
+    d = theme_dir("icons", theme)
+    for n in ("left_ptr", "default", "arrow"):
+        f = os.path.join(d, "cursors", n) if d else None
+        if f and os.path.exists(f):
+            try:
+                with open(f, "rb") as fh:
+                    data = fh.read()
+                if data[:4] != b"Xcur":
+                    break
+                cnt = struct.unpack("<I", data[12:16])[0]
+                sizes = {struct.unpack("<I", data[16 + 12 * i + 4:16 + 12 * i + 8])[0] for i in range(cnt)}
+                sizes = sorted(s for s in sizes if 8 <= s <= 256)
+                if sizes:
+                    return sizes
+            except (OSError, struct.error):
+                pass
+            break
+    return [24, 32, 48, 64, 96]
+
+
+def set_default_cursor(theme):
+    """Wie Cinnamons Themen-Modul: ~/.icons/default/index.theme auf das Zeigerthema zeigen lassen."""
+    for base in ICON_BASES[:2]:
+        d = os.path.join(base, "default")
+        try:
+            os.makedirs(d, exist_ok=True)
+            p = os.path.join(d, "index.theme")
+            if os.path.exists(p):
+                os.remove(p)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("[icon theme]\nInherits=%s\n" % theme)
+        except OSError as e:
+            print("Zeiger:", e)
+
+
+def gtk_variant(name, dark):
+    """Helle bzw. dunkle Variante eines GTK-Themas, falls vorhanden (Mint-L/-Y/-X, Adwaita, …)."""
+    cands = []
+    if dark:
+        if re.search(r"-dark(er)?($|-)", name, re.I):
+            return name
+        m = re.match(r"^(Mint-[LYX])(-.*)?$", name)
+        if m:
+            cands.append(m.group(1) + "-Dark" + (m.group(2) or ""))
+        cands += [name + "-Dark", name + "-dark"]
+    else:
+        cands.append(re.sub(r"-Dark(er)?(?=$|-)", "", name, count=1, flags=re.I))
+    for c in cands:
+        if c != name and theme_dir("themes", c) and os.path.isdir(os.path.join(theme_dir("themes", c), "gtk-3.0")):
+            return c
+    return name
 
 
 def is_icon_theme(p):
@@ -533,16 +601,58 @@ def page_appearance():
         p.g_combo(ct, "name", _("Schreibtisch (Cinnamon)"), [(n, n) for n in names])
     if ci:
         names = theme_names("themes", lambda d: os.path.isdir(os.path.join(d, "gtk-3.0")))
-        p.g_combo(ci, "gtk-theme", _("Anwendungen (GTK)"), [(n, n) for n in names], also)
+        gtk_combo = p.g_combo(ci, "gtk-theme", _("Anwendungen (GTK)"), [(n, n) for n in names], also)
         names = theme_names("icons", is_icon_theme)
         p.g_combo(ci, "icon-theme", _("Symbole"), [(n, n) for n in names], also)
         names = theme_names("icons", lambda d: os.path.isdir(os.path.join(d, "cursors")))
-        p.g_combo(ci, "cursor-theme", _("Mauszeiger"), [(n, n) for n in names], also)
-        p.g_spin(ci, "cursor-size", _("Zeigergröße"), 16, 96, 1, "px", also)
+        cur_combo = p.g_combo(ci, "cursor-theme", _("Mauszeiger"), [(n, n) for n in names], also)
+
+        size_combo = Gtk.ComboBoxText()
+
+        def fill_sizes(theme):
+            want = ci.get_int("cursor-size")
+            sizes = cursor_sizes(theme)
+            size_combo._filling = True
+            size_combo.remove_all()
+            for s in sizes:
+                size_combo.append(str(s), "%d px" % s)
+            # nächstliegende vorhandene Größe anzeigen
+            size_combo.set_active_id(str(min(sizes, key=lambda s: abs(s - want))))
+            size_combo._filling = False
+
+        def size_changed(w):
+            v = w.get_active_id()
+            if v and not getattr(w, "_filling", False) and int(v) != ci.get_int("cursor-size"):
+                for o in (ci,) + also:
+                    o.set_int("cursor-size", int(v))
+        size_combo.connect("changed", size_changed)
+        fill_sizes(ci.get_string("cursor-theme"))
+        p.row(_("Zeigergröße"), size_combo,
+              _("Es werden nur Größen angeboten, die das Zeigerthema enthält."))
+
+        def cursor_theme_changed(w):
+            t = w.get_active_id()
+            if t:
+                set_default_cursor(t)
+                fill_sizes(t)
+                size_changed(size_combo)
+        cur_combo.connect("changed", cursor_theme_changed)
     if portal:
-        p.g_combo(portal, "color-scheme", _("Farbschema"),
-                  [("default", _("Standard")), ("prefer-dark", _("Dunkel bevorzugen")),
-                   ("prefer-light", _("Hell bevorzugen"))])
+        scheme = p.g_combo(portal, "color-scheme", _("Farbschema"),
+                           [("default", _("Programme entscheiden")), ("prefer-dark", _("Dunkel")),
+                            ("prefer-light", _("Hell"))])
+        if ci:
+            def scheme_changed(w):
+                v = w.get_active_id()
+                if v in ("prefer-dark", "prefer-light"):
+                    new = gtk_variant(ci.get_string("gtk-theme"), v == "prefer-dark")
+                    if new != ci.get_string("gtk-theme"):
+                        if new not in [r[1] for r in gtk_combo.get_model()]:
+                            gtk_combo.append(new, new)
+                        gtk_combo.set_active_id(new)
+            scheme.connect("changed", scheme_changed)
+        p.note(_("„Hell“ und „Dunkel“ wechseln auch das Anwendungsthema (z. B. Mint-L-Grey ↔ Mint-L-Dark-Grey). "
+                 "„Programme entscheiden“ lässt das Thema unverändert."))
 
     p.section(_("Schriften"))
     if ci:

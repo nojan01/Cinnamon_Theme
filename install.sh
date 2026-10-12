@@ -209,7 +209,12 @@ do_appearance() {
     gset $s gtk-theme 'Mint-L-Dark-Grey'
     gset $s icon-theme 'Mint-L-Grey'
   done
-  gset org.cinnamon.desktop.interface cursor-size 23
+  # wie Cinnamons Themen-Modul: Standard-Zeiger für X und Programme ohne xsettings
+  for s in "$HOME/.icons/default" "$HOME/.local/share/icons/default"; do
+    mkdir -p "$s" && rm -f "$s/index.theme" && printf '[icon theme]\nInherits=%s\n' "$cursor" > "$s/index.theme"
+  done
+  gset org.cinnamon.desktop.interface cursor-size 24
+  gset org.gnome.desktop.interface cursor-size 24
   gset org.x.apps.portal color-scheme 'prefer-dark'
   gset org.cinnamon.desktop.interface menus-have-icons true
   gset org.cinnamon.desktop.interface buttons-have-icons false
