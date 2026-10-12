@@ -53,6 +53,7 @@ Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
 - `dock/`, `extensions/dock-menu@…` – Programme aus dem Mint-Menü ins Dock aufnehmen;
   Dock-Punkt „Anwendungen“ öffnet das Mint-Menü mit Suche
 - `extensions/weather@cinnamon-theme` – Wettereffekte auf dem Desktop
+- `extensions/desklet-anchor@cinnamon-theme` – hält Desklets bei anderer Auflösung (RDP) sichtbar
 - `settings/` – Programm „Nebel-Einstellungen“ (Python/GTK 3)
 - `desklets/`, `session/`, `plank/`, `daynight/`, `terminal/`, `system/`, `fonts/`
 - `CBlue/` – unverändertes Ausgangsthema

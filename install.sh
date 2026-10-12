@@ -277,6 +277,16 @@ for u,y in (('sysmon@cinnamon-theme',60),('fastfetch@cinnamon-theme',375)):
     if u not in have: l.append('%s:%d:%s:%d'%(u,i,x,y)); i+=1
 print(repr(l)); print(i, file=sys.stderr)" "$cur" "$id" "$x" 2>"$STATE/.next-id")
   gset org.cinnamon enabled-desklets "$new"
+  # Desklet-Anker: Desklets bei anderer Auflösung (RDP-Fenster) anteilig mitverschieben
+  put "$REPO/extensions/desklet-anchor@cinnamon-theme" "$HOME/.local/share/cinnamon/extensions/desklet-anchor@cinnamon-theme"
+  remember_path "$HOME/.config/nebel/desklet-anchor.json"
+  cur=$(gsettings get org.cinnamon enabled-extensions)
+  new=$(python3 -c "
+import ast,sys
+l=ast.literal_eval(sys.argv[1].replace('@as ',''))
+if 'desklet-anchor@cinnamon-theme' not in l: l.append('desklet-anchor@cinnamon-theme')
+print(repr(l))" "$cur")
+  gset org.cinnamon enabled-extensions "$new"
   gset org.cinnamon next-desklet-id "$(cat "$STATE/.next-id")"; rm -f "$STATE/.next-id"
   # Conky-Uhr von CBlue abschalten, falls vorhanden
   local a="$HOME/.config/autostart/conky-timefull.desktop"

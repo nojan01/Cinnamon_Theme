@@ -148,6 +148,20 @@ gsettings set org.cinnamon next-desklet-id 7
   (z. B. Uptime → Laufzeit, Memory → Speicher), Zeitangaben der Laufzeit sowie die
   Texte der Systemlast (Netz/Net, Last/Load).
 
+## 4d. Desklet-Anker (andere Bildschirmauflösung, z. B. RDP)
+
+- Cinnamon speichert Desklet-Positionen in `org.cinnamon enabled-desklets` als feste
+  Pixel und passt sie bei geänderter Auflösung nicht an; bei kleinerem RDP-Fenster
+  verschwinden rechts/unten stehende Desklets.
+- Erweiterung `extensions/desklet-anchor@cinnamon-theme` (aktiviert über den Baustein
+  „Desklets“ in install.sh): merkt sich zu jeder gespeicherten Position die
+  Bildschirmgröße in `~/.config/nebel/desklet-anchor.json`. Bei anderer Größe
+  (`monitors-changed`) wird jedes Desklet anteilig im freien Raum verschoben
+  (Anteil = x / (Breite − Desklet-Breite), ebenso für y) und bleibt so ganz sichtbar.
+  Zurück bei der Ausgangsgröße steht es wieder pixelgenau am alten Platz.
+- `enabled-desklets` bleibt unverändert; verschoben wird nur die Anzeige. Zieht man ein
+  Desklet, gilt die neue Position mit der dann aktuellen Größe als Bezug.
+
 ## 5. Dock: Plank Reloaded
 
 1. **[sudo]** Altes `plank` (0.11.89 aus Ubuntu) wurde zuerst installiert, dann durch **Plank Reloaded** ersetzt (Konflikt wird von apt aufgelöst). Installation über die offizielle PPA:
