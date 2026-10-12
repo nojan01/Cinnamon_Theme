@@ -4,7 +4,7 @@ Section: x11
 Priority: optional
 Architecture: all
 Maintainer: Norbert Jander <n.jander@posteo.de>
-Depends: bash, cinnamon, python3, python3-gi, gir1.2-gtk-3.0, python3-numpy, dconf-cli, x11-xserver-utils, fontconfig, zenity, desktop-file-utils, pkexec | policykit-1
+Depends: bash, cinnamon, python3, python3-gi, gir1.2-gtk-3.0, python3-numpy, python3-pil, dconf-cli, x11-xserver-utils, fontconfig, zenity, desktop-file-utils, pkexec | policykit-1
 Recommends: mint-l-theme, mint-l-icons, mint-cursor-themes, gnome-terminal, slick-greeter, curl, gpg, software-properties-common
 Suggests: fastfetch, plank-reloaded
 Installed-Size: @SIZE@

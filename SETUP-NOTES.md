@@ -576,7 +576,8 @@ Alle Änderungen wirken sofort:
 
 **Mauszeiger:** Die Zeigergröße bietet nur die Größen an, die das gewählte Zeigerthema
 enthält (aus der Xcursor-Datei `cursors/left_ptr`). Nebel-Cursor enthält zusätzlich 16, 18 und 20 px; `tools/build-nebel-cursor.py`
-rechnet sie flächengemittelt aus der 48-px-Stufe herunter (Bibata selbst beginnt bei 22 px). Zwischengrößen wie 20 oder 23 werden auf
+rechnet sie aus der 96-px-Stufe herunter (Bibata selbst beginnt bei 22 px): weißen Rand um 1 px
+verdicken, dann Lanczos (python3-pil). Einfaches Mitteln verwischte den dünnen Rand. Zwischengrößen wie 20 oder 23 werden auf
 die nächste vorhandene gerundet, deshalb änderte sich vorher sichtbar nichts. Ein Wechsel des
 Zeigerthemas schreibt außerdem `~/.icons/default/index.theme` und
 `~/.local/share/icons/default/index.theme` (`Inherits=<Thema>`), so wie Cinnamons Themen-Modul.

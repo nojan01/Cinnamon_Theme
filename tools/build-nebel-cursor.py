@@ -30,7 +30,7 @@ def recolor(pixels):
     return (a << 24) | (pre[0] << 16) | (pre[1] << 8) | pre[2]
 
 
-SMALL = (16, 18, 20)  # Bibata hat erst ab 22 px; kleinere Stufen werden heruntergerechnet
+SMALL = (16, 18, 20)  # Bibata hat erst ab 22 px; kleinere Stufen aus der größten heruntergerechnet
 
 
 def area_matrix(n_in, n_out):
@@ -44,7 +44,7 @@ def area_matrix(n_in, n_out):
     return m / r
 
 
-def shrink(px, w, h, nw, nh):
+def shrink_box(px, w, h, nw, nh):
     img = px.reshape(h, w)
     my, mx = area_matrix(h, nh), area_matrix(w, nw)
     out = 0
@@ -53,6 +53,22 @@ def shrink(px, w, h, nw, nh):
         v = np.clip(np.rint(my @ ch @ mx.T), 0, 255).astype(np.uint32)
         out = out | (v << sh)
     return out.reshape(-1)
+
+
+def shrink(px, w, h, nw, nh):
+    """Verkleinern mit 1 px dickerem weißen Rand (sonst verwischt er) und Lanczos-Filter."""
+    try:
+        from PIL import Image, ImageFilter
+    except ImportError:
+        return shrink_box(px, w, h, nw, nh)
+    a = px.reshape(h, w)
+    rgba = np.stack([(a >> 16) & 255, (a >> 8) & 255, a & 255, (a >> 24) & 255], -1).astype(np.uint8)
+    im = Image.frombuffer("RGBa", (w, h), rgba.tobytes(), "raw", "RGBa", 0, 1).convert("RGBA")
+    rim = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    rim.putalpha(im.getchannel("A").filter(ImageFilter.MaxFilter(3)))
+    rim.alpha_composite(im)
+    small = np.asarray(rim.convert("RGBa").resize((nw, nh), Image.LANCZOS)).astype(np.uint32)
+    return ((small[..., 3] << 24) | (small[..., 0] << 16) | (small[..., 1] << 8) | small[..., 2]).reshape(-1)
 
 
 def convert(data):
@@ -72,7 +88,7 @@ def convert(data):
     for size in SMALL:
         if size in images or not images:
             continue
-        src = min((s for s in images if s >= 2 * size), default=max(images))
+        src = max(images)
         f = size / src
         frames = []
         for w, h, xh, yh, delay, px in images[src]:

@@ -116,7 +116,7 @@ start_plank() { command -v plank >/dev/null && setsid plank >/dev/null 2>&1 < /d
 BASE_PKGS=(python3 python3-gi gir1.2-gtk-3.0 dconf-cli x11-xserver-utils fontconfig zenity desktop-file-utils)
 declare -A PKGS=(
   [fonts]="fontconfig"
-  [appearance]="mint-l-theme mint-l-icons mint-cursor-themes python3-numpy"
+  [appearance]="mint-l-theme mint-l-icons mint-cursor-themes python3-numpy python3-pil"
   [daynight]="systemd"
   [desklets]="fastfetch"
   [session]="python3-gi gir1.2-gtk-3.0 cinnamon-session"
