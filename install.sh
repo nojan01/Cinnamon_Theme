@@ -131,6 +131,20 @@ as_root() {
   else die "Weder pkexec noch sudo vorhanden."; fi
 }
 
+root_script() { # skript (aus system/) [argumente] – als root ausführen
+  # root darf auf Netzlaufwerken (FUSE, z. B. RDP-Laufwerke) oft nicht lesen: Skript und
+  # benötigte Dateien daher vorher in einen lokalen temporären Ordner kopieren.
+  local name="$1" tmp rc=0; shift
+  tmp=$(mktemp -d /tmp/nebel-root.XXXXXX) || return 1
+  mkdir -p "$tmp/wallpapers" "$tmp/fonts"
+  cp -r "$REPO/system" "$tmp/" && cp "$REPO/wallpapers/Linux_Mint_Nebel_3840x2160.jpg" "$tmp/wallpapers/" \
+    && cp -r "$REPO/fonts/JetBrainsMono" "$tmp/fonts/" || { rm -rf "$tmp"; return 1; }
+  chmod -R a+rX "$tmp"
+  as_root /bin/bash "$tmp/system/$name" "$@" || rc=$?
+  rm -rf "$tmp"
+  return $rc
+}
+
 install_dependencies() {
   local want=() p c
   for p in "${BASE_PKGS[@]}"; do want+=("$p"); done
@@ -142,7 +156,7 @@ install_dependencies() {
   # das alte plank kollidiert mit plank-reloaded und wird von apt ersetzt
   [ ${#missing[@]} -eq 0 ] && { log "Alle benötigten Pakete sind vorhanden"; return; }
   log "Pakete installieren: ${missing[*]} (Passwort wird abgefragt)"
-  as_root /bin/bash "$REPO/system/install-packages.sh" "${missing[@]}" \
+  root_script install-packages.sh "${missing[@]}" \
     || die "Paketinstallation fehlgeschlagen oder abgebrochen: ${missing[*]}"
   command -v zenity >/dev/null && [ -n "${DISPLAY:-}" ] && [ "$NO_GUI" = 0 ] && GUI=1
 }
@@ -421,7 +435,7 @@ do_settings() {
 do_lightdm() {
   log "Anmeldebildschirm (Passwort wird abgefragt)"
   local cur=(); [ -f "$HOME/.icons/Nebel-Cursor/index.theme" ] && cur=(--cursor "$HOME/.icons/Nebel-Cursor")
-  if as_root /bin/bash "$REPO/system/install-lightdm.sh" "${cur[@]}"; then mark lightdm; else warn "Anmeldebildschirm nicht eingerichtet"; fi
+  if root_script install-lightdm.sh "${cur[@]}"; then mark lightdm; else warn "Anmeldebildschirm nicht eingerichtet"; fi
 }
 
 # ---------------------------------------------------------------- Deinstallation
@@ -440,7 +454,7 @@ uninstall() {
         case "$a" in
           daynight) systemctl --user disable --now cinnamon-theme-daynight.timer >/dev/null 2>&1 ;;
           dockmenu) local pid; for pid in $(pgrep -f 'nebel-dock-add --watch-favorites'); do kill "$pid"; done ;;
-          lightdm)  as_root /bin/bash "$REPO/system/install-lightdm.sh" --uninstall || warn "Anmeldebildschirm nicht zurückgesetzt" ;;
+          lightdm)  root_script install-lightdm.sh --uninstall || warn "Anmeldebildschirm nicht zurückgesetzt" ;;
         esac ;;
     esac
   done < <(tac "$BACKUP")
