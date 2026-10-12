@@ -35,5 +35,6 @@ chmod 644 "$ROOT/DEBIAN/md5sums"
 mkdir -p "$REPO/dist"
 OUT="$REPO/dist/${PKG}_${VERSION}_all.deb"
 dpkg-deb --root-owner-group -Zxz --build "$ROOT" "$WORK/pkg.deb" >/dev/null
+rm -f "$OUT"  # Netzlaufwerke kürzen beim Überschreiben nicht – alte Reste machten das Paket ungültig
 cp "$WORK/pkg.deb" "$OUT"
 echo "$OUT"
