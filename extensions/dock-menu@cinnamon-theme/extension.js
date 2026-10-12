@@ -185,15 +185,53 @@ function openAtDock() {
     }
 }
 
-// Hintergrund des Mint-Menüs: Farbe wie im Theme (.menu), Deckkraft einstellbar
+function plankTheme() {
+    try {
+        let s = new Gio.Settings({ schema_id: "net.launchpad.plank.dock.settings", path: PLANK_PATH });
+        let theme = s.get_string("theme");
+        for (let base of [GLib.build_filenamev([GLib.get_user_data_dir(), "plank", "themes"]), "/usr/share/plank/themes"]) {
+            let kf = readKeyFile(GLib.build_filenamev([base, theme, "dock.theme"]));
+            if (kf)
+                return kf;
+        }
+    } catch (e) {}
+    return null;
+}
+
+function plankColor(kf, key, def) {
+    try {
+        let v = kf.get_string("PlankDockTheme", key).split(";;").map(Number);
+        if (v.length === 4 && v.every(n => !isNaN(n)))
+            return v;
+    } catch (e) {}
+    return def;
+}
+
+// Hintergrund des Mint-Menüs wie die Füllung des Plank-Docks (senkrechter
+// Verlauf FillStartColor → FillEndColor aus dock.theme). Die eingestellte
+// Deckkraft gilt oben, unten bleibt das Verhältnis aus dem Dock-Theme erhalten.
+function menuStyle() {
+    let kf = plankTheme();
+    let a = plankColor(kf, "FillStartColor", [60, 60, 60, 190]);
+    let b = plankColor(kf, "FillEndColor", [35, 35, 35, 150]);
+    let top = menuOpacity / 100;
+    let bottom = Math.min(1, top * (a[3] > 0 ? b[3] / a[3] : 1));
+    let rgba = (c, al) => "rgba(" + c[0] + ", " + c[1] + ", " + c[2] + ", " + al.toFixed(2) + ")";
+    return "background-gradient-direction: vertical;" +
+        " background-gradient-start: " + rgba(a, top) + ";" +
+        " background-gradient-end: " + rgba(b, bottom) + ";" +
+        " background-color: " + rgba(a, top) + ";";
+}
+
 function applyOpacity() {
+    let style = menuStyle();
     let instances = AppletManager.getRunningInstancesForUuid(MENU_UUID) || [];
     styledMenus = styledMenus.filter(m => instances.some(a => a.menu === m) && !m.actor.is_finalized());
     for (let applet of instances) {
         let menu = applet.menu;
         if (!menu || menu.actor.is_finalized())
             continue;
-        menu.actor.set_style("background-color: rgba(40, 40, 40, " + (menuOpacity / 100).toFixed(2) + ");");
+        menu.actor.set_style(style);
         if (!styledMenus.includes(menu))
             styledMenus.push(menu);
     }

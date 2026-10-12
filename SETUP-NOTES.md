@@ -482,8 +482,10 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   Altes Docklet hier gesichert: `~/.config/plank-backup/applications-1.dockitem.docklet`.
 - **Durchsichtigkeit des Mint-Menüs** – Systemeinstellungen → Erweiterungen →
   „Nebel: Zum Dock hinzufügen“ → Zahnrad → „Deckkraft des Menühintergrunds“
-  (10–100 %, Standard 75 % wie im Theme). Die Erweiterung setzt am Menü-Applet
-  `menu.actor.set_style("background-color: rgba(40, 40, 40, x)")` und wirkt
+  (10–100 %, Standard 75 %). Farbe wie die Füllung des Plank-Docks: senkrechter
+  Verlauf `FillStartColor` → `FillEndColor` aus `dock.theme` des eingestellten
+  Plank-Themes (Nebel-Grau: Grau 60 → 35); die Deckkraft gilt oben, unten im
+  Verhältnis des Dock-Themes. Gesetzt per `menu.actor.set_style(...)`, wirkt
   sofort; beim Abschalten der Erweiterung gilt wieder `.menu` aus dem Theme.
 
 ## 17. Wetter auf dem Desktop (Regen, Blätter, Schnee)
