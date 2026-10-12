@@ -441,6 +441,7 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
 - Hinweis am Ende: Dock-Starter mit `Icon=*-symbolic` (schlecht sichtbar, siehe 6b).
 - Root-Skripte immer mit `/bin/bash <skript>` aufrufen, weil das Netzlaufwerk Ausführungsrechte nicht zuverlässig behält.
 - Getestet in einer Sandbox (`HOME=/tmp/…`, `GSETTINGS_BACKEND=memory`): Installation und Deinstallation hinterlassen keine Reste.
+- Stand „eingerichtet“ (`--list`, Nebel-Einstellungen): Nach jedem ausgeführten Baustein schreibt die Hauptschleife eine Zeile `mark<TAB>baustein` in `backup.tsv` (nur einmal). Ausnahme: der Anmeldebildschirm wird nur bei Erfolg markiert. Bis 1.0.12 markierten sich nur fünf Bausteine selbst.
 
 ## 15. Installationspaket (.deb) und Lizenzen
 

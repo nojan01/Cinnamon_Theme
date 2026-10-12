@@ -84,7 +84,7 @@ put() { # quelle ziel [modus]
   rm -rf "$2"; cp -r "$1" "$2"; [ -n "${3:-}" ] && chmod "$3" "$2"; return 0
 }
 
-mark() { printf 'mark\t%s\t-\t1\n' "$1" >> "$BACKUP"; }
+mark() { has_backup mark "$1" - || printf 'mark\t%s\t-\t1\n' "$1" >> "$BACKUP"; }
 
 # ---------------------------------------------------------------- Hilfen
 screen_size() { # gibt "B H" des gesamten Bildschirms aus
@@ -540,7 +540,10 @@ install_dependencies
 NEED_RESTART=0
 selected() { [[ " ${SELECTED[*]} " == *" $1 "* ]]; }
 for c in "${COMPONENTS[@]}"; do
-  selected "$c" && "do_$c"
+  selected "$c" || continue
+  "do_$c"
+  # „eingerichtet“ in Nebel-Einstellungen; der Anmeldebildschirm markiert sich nur bei Erfolg selbst
+  [ "$c" = lightdm ] || mark "$c"
 done
 
 if [ $NEED_RESTART = 1 ] || selected theme; then
