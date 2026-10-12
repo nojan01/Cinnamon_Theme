@@ -20,6 +20,7 @@ printf '%s (%s) stable; urgency=low\n\n  * Version %s\n\n -- Norbert Jander <n.j
   "$PKG" "$VERSION" "$VERSION" "$(LC_ALL=C date -R)" | gzip -9n > "$DOC/changelog.gz"
 
 # Rechte (Quelle kann ein Netzlaufwerk ohne Unix-Rechte sein)
+find "$ROOT" -depth -type d -name __pycache__ -exec rm -rf {} +
 find "$ROOT" -type d -exec chmod 755 {} +
 find "$ROOT" -type f -exec chmod 644 {} +
 chmod 755 "$ROOT/usr/bin/nebel-einrichten" "$ROOT/usr/bin/nebel-einstellungen" "$SHARE/install.sh" "$SHARE"/system/*.sh \
