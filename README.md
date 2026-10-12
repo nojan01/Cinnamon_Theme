@@ -44,7 +44,8 @@ Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
 
 - `Nebel/` – eigenes Cinnamon-Theme (erzeugt mit `tools/build-nebel-theme.py`)
 - `wallpapers/` – Hintergrundbilder 4K/5K, jeweils Nacht und Tag
-- `dock/`, `extensions/dock-menu@…` – Programme aus dem Mint-Menü ins Dock aufnehmen
+- `dock/`, `extensions/dock-menu@…` – Programme aus dem Mint-Menü ins Dock aufnehmen;
+  Dock-Punkt „Anwendungen“ öffnet das Mint-Menü mit Suche
 - `extensions/weather@cinnamon-theme` – Wettereffekte auf dem Desktop
 - `desklets/`, `session/`, `plank/`, `daynight/`, `terminal/`, `system/`, `fonts/`
 - `CBlue/` – unverändertes Ausgangsthema

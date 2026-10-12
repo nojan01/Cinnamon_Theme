@@ -300,14 +300,30 @@ do_plank() {
       mode=add; else mode=replace; fi
   fi
   remember_path "$L"; mkdir -p "$L"
+  # „Anwendungen“: Starter öffnet das Mint-Menü (mit Suche) über dem Dock;
+  # braucht die Erweiterung dock-menu@cinnamon-theme (Baustein dockmenu).
+  local menu_df="$HOME/.local/share/applications/nebel-menu.desktop" use_menu=0
+  if selected dockmenu || [ -d "$HOME/.local/share/cinnamon/extensions/dock-menu@cinnamon-theme" ]; then
+    use_menu=1; put "$REPO/dock/nebel-menu.desktop" "$menu_df"
+  fi
   local items=() line name file base
   if [ "$mode" = add ]; then
     mapfile -t items < <(gsettings get "$S" dock-items | grep -oE "'[^']+'" | tr -d "'")
+    if [ $use_menu = 1 ]; then # altes Docklet „Anwendungen“ an gleicher Stelle ersetzen
+      local i
+      for i in "${!items[@]}"; do
+        if grep -qs '^Launcher=docklet://applications' "$L/${items[$i]}"; then
+          rm -f "$L/${items[$i]}"; items[$i]=nebel-menu.dockitem
+          printf '[PlankDockItemPreferences]\nLauncher=file://%s\n' "$menu_df" > "$L/nebel-menu.dockitem"
+        fi
+      done
+    fi
   else
     rm -f "$L"/*.dockitem
   fi
   while IFS= read -r line; do
     line="${line%%#*}"; line="$(echo "$line" | xargs)"; [ -z "$line" ] && continue
+    [ "$line" = menu ] && { [ $use_menu = 1 ] && line="app:nebel-menu.desktop" || line="docklet:applications"; }
     case "$line" in
       docklet:*) name="${line#docklet:}"; base="$name.dockitem"
                  [ -f "$L/$base" ] || cp "$REPO/plank/launchers/$base" "$L/$base" ;;

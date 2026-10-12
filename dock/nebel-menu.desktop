@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Applications
+Name[de]=Anwendungen
+Comment=Open the Mint menu with search above the dock
+Comment[de]=Mint-Menü mit Suche über dem Dock öffnen
+Icon=linuxmint-logo-badge
+Exec=gdbus call --session --dest org.Cinnamon --object-path /de/little_tools/NebelMenu --method de.little_tools.NebelMenu.Open
+NoDisplay=true
+StartupNotify=false
+Terminal=false

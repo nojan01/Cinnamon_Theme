@@ -464,6 +464,19 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
 - Beides nutzt die D-Bus-Schnittstelle von Plank:
   `net.launchpad.plank /net/launchpad/plank/dock1 net.launchpad.plank.Items.Add(file-URI)`.
 - Von Hand: `nebel-dock-add org.gnome.Calculator.desktop`.
+- **Dock-Punkt „Anwendungen“ mit Suche** (ab 1.0.8) – Planks Docklet
+  `applications` kennt keine Suche. Ersetzt durch den Starter
+  `~/.local/share/applications/nebel-menu.desktop` (aus `dock/`), Dock-Eintrag
+  `nebel-menu.dockitem`. Er ruft
+  `gdbus call --session --dest org.Cinnamon --object-path /de/little_tools/NebelMenu --method de.little_tools.NebelMenu.Open`.
+  Die Erweiterung `dock-menu@cinnamon-theme` stellt diese Methode bereit und
+  öffnet das Original-Mint-Menü (`menu@cinnamon.org`, mit Suchfeld) unten im
+  Arbeitsbereich direkt über dem Dock, waagerecht über der Mausposition
+  (ersetzt dafür vorübergehend `_calculatePosition` des Menüs). Erneuter Aufruf
+  schließt es. In `plank/default-apps.conf` steht dafür `menu`; ohne Baustein
+  `dockmenu` wird weiter das Docklet verwendet. Bei „nur ergänzen“ ersetzt der
+  Installer ein vorhandenes Docklet `applications` an derselben Stelle.
+  Altes Docklet hier gesichert: `~/.config/plank-backup/applications-1.dockitem.docklet`.
 
 ## 17. Wetter auf dem Desktop (Regen, Blätter, Schnee)
 
