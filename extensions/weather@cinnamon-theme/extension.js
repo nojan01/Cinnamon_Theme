@@ -157,12 +157,12 @@ class Weather {
             snow: this.snow && (!s || m === 12 || m <= 2),
             sun: this.sun && h >= 8 && h < 18,      // Sonne nur tagsüber
         };
-        let avail = Object.keys(ok).filter(k => ok[k]);
-        if (!avail.length) return null;
-        // Sonne und Regen wechseln sich ab: nach Regen kommt die Sonne durch und umgekehrt
+        // Sonne im Wechsel mit dem Regen: Sie folgt auf einen Regenschauer und wird sonst nicht
+        // gelost (nur wenn gerade kein Regen möglich ist). Die übrigen Effekte bleiben zufällig.
+        let avail = Object.keys(ok).filter(k => ok[k] && (k !== "sun" || !ok.rain));
         let main = this.lastMain === "rain" && ok.sun ? "sun"
-                 : this.lastMain === "sun" && ok.rain ? "rain"
-                 : avail[Math.floor(Math.random() * avail.length)];
+                 : avail.length ? avail[Math.floor(Math.random() * avail.length)] : null;
+        if (!main) return null;
         this.lastMain = main;
         let kinds = { [main]: 1 };
         if (main === "leaf" && ok.rain && Math.random() < 0.3) kinds.rain = 0.6;     // Herbststurm
