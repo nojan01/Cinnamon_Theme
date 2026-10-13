@@ -17,6 +17,16 @@ const LEAF_COLORS = [
     [0.82, 0.45, 0.14], [0.74, 0.27, 0.12], [0.88, 0.64, 0.20],
     [0.58, 0.35, 0.16], [0.64, 0.56, 0.22], [0.78, 0.36, 0.10],
 ];
+const MAPLE_COLORS = [
+    [0.80, 0.16, 0.10], [0.88, 0.32, 0.08], [0.70, 0.12, 0.14], [0.92, 0.50, 0.10],
+];
+// rechte Hälfte eines Ahornblatts (Spitze oben bei y=1, Blattgrund bei 0), wird gespiegelt
+const MAPLE = [
+    [0, 1], [0.09, 0.80], [0.19, 0.83], [0.16, 0.62], [0.12, 0.42],
+    [0.38, 0.52], [0.47, 0.67], [0.57, 0.57], [0.86, 0.60], [0.67, 0.39], [0.73, 0.29],
+    [0.45, 0.24], [0.24, 0.15], [0.47, 0.03], [0.60, -0.13], [0.36, -0.06], [0.06, -0.06],
+];
+const MAPLE_TIPS = [[0, 1], [0.86, 0.60], [0.60, -0.13], [-0.86, 0.60], [-0.60, -0.13]];
 
 let weather = null;
 let extDir = "";
@@ -433,7 +443,10 @@ class Weather {
         let p = this._get("leaf"), d = Math.random();
         let s = Math.round((20 + d * 22) * this.size / 100);
         let a = p.actor;
-        a._color = LEAF_COLORS[Math.floor(Math.random() * LEAF_COLORS.length)]
+        a._maple = Math.random() < 0.25;          // etwa jedes vierte Blatt: Ahorn
+        if (a._maple) s = Math.round(s * 1.2);
+        let pal = a._maple ? MAPLE_COLORS : LEAF_COLORS;
+        a._color = pal[Math.floor(Math.random() * pal.length)]
             .map(c => Math.max(0, Math.min(1, c + rand(-0.06, 0.06))));
         a._shape = Math.random();
         a.set_size(s, s);
@@ -591,6 +604,7 @@ class Weather {
         let cr = area.get_context();
         let [w, h] = area.get_surface_size();
         let c = area._color || LEAF_COLORS[0];
+        if (area._maple) { this._drawMaple(cr, w, h, c); cr.$dispose(); return; }
         let cy = h / 2, x0 = w * 0.14, x1 = w * 0.97, L = x1 - x0;
         let bw = h * (0.24 + (area._shape || 0) * 0.2);
         cr.moveTo(x0, cy);
@@ -606,6 +620,33 @@ class Weather {
         cr.lineTo(x0 + L * 0.85, cy);
         cr.stroke();
         cr.$dispose();
+    }
+
+    // Ahornblatt, Spitze nach rechts (wie das einfache Blatt), Stiel links
+    _drawMaple(cr, w, h, c) {
+        let S = w / 1.9, x0 = w * 0.06 + 0.4 * S, cy = h / 2;
+        let P = (x, y) => [x0 + y * S, cy + x * S];
+        let pts = MAPLE.concat(MAPLE.slice(1).reverse().map(([x, y]) => [-x, y]));
+        let [sx, sy] = P(pts[0][0], pts[0][1]);
+        cr.moveTo(sx, sy);
+        for (let [x, y] of pts.slice(1)) { let [px, py] = P(x, y); cr.lineTo(px, py); }
+        cr.closePath();
+        cr.setSourceRGBA(c[0], c[1], c[2], 0.95);
+        cr.fillPreserve();
+        cr.setSourceRGBA(c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.9);
+        cr.setLineWidth(Math.max(0.6, w / 40));
+        cr.setLineJoin(1);
+        cr.stroke();
+        // Adern vom Blattgrund zu den Lappenspitzen, Stiel
+        let [bx, by] = P(0, 0.02);
+        cr.setLineWidth(Math.max(0.5, w / 55));
+        for (let [x, y] of MAPLE_TIPS) {
+            let [tx, ty] = P(x * 0.8, y * 0.8);
+            cr.moveTo(bx, by); cr.lineTo(tx, ty);
+        }
+        let [ex, ey] = P(0.03, -0.4);
+        cr.moveTo(bx, by); cr.lineTo(ex, ey);
+        cr.stroke();
     }
 
     _step() {

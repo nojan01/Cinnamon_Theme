@@ -562,6 +562,9 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   beim Zoomen –, bleibt die alte Leiste gültig. Getestet: 36 / 52 / 64 px.
 - 1.0.7 behebt: Beim Ausblenden blieb die Regen-Abdunkelung durch Rundung bei
   Deckkraft 3 hängen – das Ereignis endete nie, es wurde kein neues eingeplant.
+- Ahornblätter: Etwa jedes vierte Blatt ist ein Ahornblatt (5 gezackte Lappen, Adern, Stiel;
+  Rot/Orange, 20 % größer). Umriss als Punktliste `MAPLE` (rechte Hälfte, gespiegelt),
+  gezeichnet in `_drawMaple`; Flug und Taumeln wie bei den übrigen Blättern.
 - Sonnenstrahlen im Nebel (Schalter „Sonnenstrahlen im Nebel“, Standard an, automatisch nur
   8–18 Uhr, unabhängig von der Jahreszeit): Eine Sonne knapp über dem oberen linken Rand
   (4–16 % der Breite) mit warmem Schein; davon fächern 5–8 Lichtkegel nach rechts unten.
