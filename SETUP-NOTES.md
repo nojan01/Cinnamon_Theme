@@ -563,8 +563,11 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
 - 1.0.7 behebt: Beim Ausblenden blieb die Regen-Abdunkelung durch Rundung bei
   Deckkraft 3 hängen – das Ereignis endete nie, es wurde kein neues eingeplant.
 - Sonnenstrahlen im Nebel (Schalter „Sonnenstrahlen im Nebel“, Standard an, automatisch nur
-  8–18 Uhr, unabhängig von der Jahreszeit): Eine Sonne knapp über dem oberen Rand (zufällig
-  links oder rechts) mit warmem Schein; davon fächern 5–8 Lichtkegel zur Bildschirmmitte.
+  8–18 Uhr, unabhängig von der Jahreszeit): Eine Sonne knapp über dem oberen linken Rand
+  (4–16 % der Breite) mit warmem Schein; davon fächern 5–8 Lichtkegel nach rechts unten.
+  Sonne und Regen wechseln sich ab: Nach einem Regenschauer kommt als Nächstes die Sonne
+  (falls tagsüber), danach wieder Regen (falls Jahreszeit passt); sonst Zufall wie bisher.
+  Auch die Testknöpfe zählen für den Wechsel.
   Jeder Kegel ist eine `St.DrawingArea`, einmal mit Cairo gezeichnet (6 ineinanderliegende
   Keile für weiche Ränder, längs ausgeblendet); pro Bild ändern sich nur Deckkraft (zwei
   langsame Schwingungen = durchziehender Nebel) und Winkel (leichtes Pendeln, etwas Wind).

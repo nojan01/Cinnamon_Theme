@@ -56,6 +56,7 @@ class Weather {
         this.acc = { rain: 0, leaf: 0, snow: 0, sun: 0 };
         this.sunRays = null;       // Lichtkegel {sx, sy, beams[]}
         this.sunLevel = 0;
+        this.lastMain = null;      // Haupteffekt des letzten Ereignisses (Wechsel Regen/Sonne)
         this.event = null;
         this.paused = false;
         this.shadeLevel = 0;
@@ -158,7 +159,11 @@ class Weather {
         };
         let avail = Object.keys(ok).filter(k => ok[k]);
         if (!avail.length) return null;
-        let main = avail[Math.floor(Math.random() * avail.length)];
+        // Sonne und Regen wechseln sich ab: nach Regen kommt die Sonne durch und umgekehrt
+        let main = this.lastMain === "rain" && ok.sun ? "sun"
+                 : this.lastMain === "sun" && ok.rain ? "rain"
+                 : avail[Math.floor(Math.random() * avail.length)];
+        this.lastMain = main;
         let kinds = { [main]: 1 };
         if (main === "leaf" && ok.rain && Math.random() < 0.3) kinds.rain = 0.6;     // Herbststurm
         if (main === "rain" && ok.leaf && Math.random() < 0.4) kinds.leaf = 0.5;
@@ -194,7 +199,10 @@ class Weather {
         if (manual) this._seed(kinds);
     }
 
-    trigger(kinds) { this._startEvent(kinds, true); }
+    trigger(kinds) {
+        if (kinds.rain || kinds.sun) this.lastMain = kinds.rain ? "rain" : "sun";
+        this._startEvent(kinds, true);
+    }
 
     // Testknopf: gleich einige Teilchen über den Bildschirm verteilen statt nur am Rand
     _seed(kinds) {
@@ -455,8 +463,7 @@ class Weather {
     // und Winkel – das kostet kaum Rechenzeit.
     _makeSun() {
         let W = this.W, H = this.H;
-        let left = Math.random() < 0.5;
-        let sx = (left ? rand(0.08, 0.35) : rand(0.65, 0.92)) * W, sy = -rand(0.08, 0.2) * H;
+        let sx = rand(0.04, 0.16) * W, sy = -rand(0.08, 0.18) * H;   // links oben
         let sun = { sx, sy, beams: [] };
         // Richtung zur Bildschirmmitte unten, Fächer darum
         let mid = Math.atan2(W * 0.5 - sx, H - sy) * 180 / Math.PI;
