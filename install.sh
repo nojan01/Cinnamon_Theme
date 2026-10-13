@@ -546,10 +546,28 @@ for c in "${COMPONENTS[@]}"; do
   [ "$c" = lightdm ] || mark "$c"
 done
 
-if [ $NEED_RESTART = 1 ] || selected theme; then
+# Prüfen, ob Anwendungs- und Symbolthema wirklich gesetzt und vorhanden sind
+if selected appearance; then
+  for s in org.cinnamon.desktop.interface org.gnome.desktop.interface; do
+    [ "$(gsettings get $s gtk-theme 2>/dev/null)" = "'Mint-L-Dark-Grey'" ] || warn "Anwendungsthema in $s nicht gesetzt: $(gsettings get $s gtk-theme 2>/dev/null)"
+    [ "$(gsettings get $s icon-theme 2>/dev/null)" = "'Mint-L-Grey'" ] || warn "Symbolthema in $s nicht gesetzt: $(gsettings get $s icon-theme 2>/dev/null)"
+  done
+  [ -d /usr/share/themes/Mint-L-Dark-Grey/gtk-3.0 ] || warn "Mint-L-Dark-Grey fehlt (Paket mint-l-theme)"
+  [ -f /usr/share/icons/Mint-L-Grey/index.theme ] || warn "Mint-L-Grey fehlt (Paket mint-l-icons)"
+fi
+
+if [ $NEED_RESTART = 1 ] || selected theme || selected appearance; then
   log "Cinnamon neu starten"
-  dbus-send --session --dest=org.Cinnamon --type=method_call /org/Cinnamon \
-    org.Cinnamon.RestartCinnamon boolean:true 2>/dev/null || warn "Bitte Cinnamon mit Strg+Alt+Esc neu starten"
+  if [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
+    warn "Wayland-Sitzung: Cinnamon lässt sich nicht neu starten – bitte ab- und wieder anmelden"
+  elif ! gdbus introspect --session --dest org.Cinnamon --object-path /org/Cinnamon 2>/dev/null | grep -q RestartCinnamon; then
+    warn "Cinnamon nicht erreichbar – bitte mit Strg+Alt+Esc neu starten oder ab- und wieder anmelden"
+  else
+    # kurz warten, damit Einstellungen und Dateien sicher geschrieben sind
+    sleep 1
+    dbus-send --session --dest=org.Cinnamon --type=method_call /org/Cinnamon \
+      org.Cinnamon.RestartCinnamon boolean:true 2>/dev/null || warn "Bitte Cinnamon mit Strg+Alt+Esc neu starten"
+  fi
 fi
 
 msg="Nebel $VERSION ist eingerichtet."

@@ -12,7 +12,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 has_candidate() { LC_ALL=C apt-cache policy "$1" 2>/dev/null | grep -q 'Candidate: [0-9]'; }
 
-apt-get update -q || true
+apt-get -o DPkg::Lock::Timeout=600 update -q || true
 added=0
 for p in "$@"; do
   case "$p" in
@@ -31,5 +31,6 @@ for p in "$@"; do
       fi ;;
   esac
 done
-[ $added = 1 ] && apt-get update -q
-apt-get install -y "$@"
+[ $added = 1 ] && apt-get -o DPkg::Lock::Timeout=600 update -q
+# frisch installiertes System: Aktualisierungsverwaltung hält apt oft noch gesperrt
+apt-get -o DPkg::Lock::Timeout=600 install -y "$@"
