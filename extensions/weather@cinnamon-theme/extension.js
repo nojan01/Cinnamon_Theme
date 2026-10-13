@@ -9,6 +9,7 @@ const Meta = imports.gi.Meta;
 const St = imports.gi.St;
 const Main = imports.ui.main;
 const Settings = imports.ui.settings;
+const Cairo = imports.cairo;
 
 const UUID = "weather@cinnamon-theme";
 const SPLASH_MAX = 220;
@@ -29,7 +30,7 @@ class Weather {
         const resched = () => { if (!this.event) this._schedule(); };
         this.settings.bind("active", "active", () => this._onActive());
         this.settings.bind("toggle-key", "toggleKey", () => this._bindKey());
-        for (let [k, p] of [["rain", "rain"], ["leaves", "leaves"], ["snow", "snow"], ["seasonal", "seasonal"],
+        for (let [k, p] of [["rain", "rain"], ["leaves", "leaves"], ["snow", "snow"], ["sun", "sun"], ["seasonal", "seasonal"],
                             ["pause-min", "pauseMin"], ["pause-max", "pauseMax"]])
             this.settings.bind(k, p, resched);
         for (let [k, p] of [["duration-min", "durMin"], ["duration-max", "durMax"], ["intensity", "intensity"],
@@ -48,11 +49,13 @@ class Weather {
         this._restack();
 
         this.parts = [];
-        this.pool = { rain: [], leaf: [], snow: [], splash: [] };
+        this.pool = { rain: [], leaf: [], snow: [], splash: [], mote: [] };
         this.dock = null;          // sichtbare Plank-Leiste {x1, x2, y}
         this.dockCheck = 0;
         this.splashCount = 0;
-        this.acc = { rain: 0, leaf: 0, snow: 0 };
+        this.acc = { rain: 0, leaf: 0, snow: 0, sun: 0 };
+        this.sunRays = null;       // Lichtkegel {sx, sy, beams[]}
+        this.sunLevel = 0;
         this.event = null;
         this.paused = false;
         this.shadeLevel = 0;
@@ -146,10 +149,12 @@ class Weather {
     _pickKinds() {
         let m = GLib.DateTime.new_now_local().get_month();
         let s = this.seasonal;
+        let h = GLib.DateTime.new_now_local().get_hour();
         let ok = {
             rain: this.rain && (!s || (m >= 3 && m <= 11)),
             leaf: this.leaves && (!s || (m >= 9 && m <= 11)),
             snow: this.snow && (!s || m === 12 || m <= 2),
+            sun: this.sun && h >= 8 && h < 18,      // Sonne nur tagsüber
         };
         let avail = Object.keys(ok).filter(k => ok[k]);
         if (!avail.length) return null;
@@ -185,6 +190,7 @@ class Weather {
         this.paused = false;
         this._checkCovered(true);
         if (!this.paused) this._run();
+        if (kinds.sun && !this.sunRays) this._makeSun();
         if (manual) this._seed(kinds);
     }
 
@@ -194,11 +200,12 @@ class Weather {
     _seed(kinds) {
         let k = this.intensity / 100;
         let wind = (Math.sign(this.wind) || this.event.dir) * Math.max(Math.abs(this.wind / 100), this.event.minWind) * 200;
-        let n = { rain: 120 * k, leaf: 6 * k, snow: 60 * k };
+        let n = { rain: 120 * k, leaf: 6 * k, snow: 60 * k, sun: 30 * k };
         for (let kind in kinds) {
             for (let i = 0; i < Math.round(n[kind] * kinds[kind]); i++) {
                 if (kind === "rain") this._spawnRain(wind);
                 else if (kind === "leaf") this._spawnLeaf(wind);
+                else if (kind === "sun") { this._spawnMote(); continue; }
                 else this._spawnSnow();
                 let p = this.parts[this.parts.length - 1];
                 p.x = rand(0, this.W);
@@ -210,6 +217,7 @@ class Weather {
     stop() {
         this.event = null;
         this._clearParts();
+        this._dropSun();
         this._idle();
     }
 
@@ -310,6 +318,7 @@ class Weather {
         this.layer.hide();
         this.shade.opacity = 0;
         this.shadeLevel = 0;
+        this._dropSun();
         this.event = null;
         for (let k in this.pool) {
             for (let p of this.pool[k]) p.actor.destroy();
@@ -333,6 +342,7 @@ class Weather {
         if (c && this.event && GLib.get_monotonic_time() / 1e6 - this.event.t0 > this.event.dur) {
             this.event = null;
             this._clearParts();
+            this._dropSun();
             this._idle();
             return;
         }
@@ -351,6 +361,8 @@ class Weather {
         } else if (kind === "splash") {
             a = new Clutter.Actor({ reactive: false,
                 background_color: new Clutter.Color({ red: 215, green: 225, blue: 238, alpha: 255 }) });
+        } else if (kind === "mote") {
+            a = new St.Widget({ reactive: false });
         } else if (kind === "leaf") {
             a = new St.DrawingArea({ reactive: false });
             a.connect("repaint", area => this._drawLeaf(area));
@@ -437,6 +449,137 @@ class Weather {
         }
     }
 
+    // ------------------------------------------------------------ Sonnenstrahlen
+    // Eine Sonne knapp über dem oberen Rand, davon fächern 5–8 weiche Lichtkegel nach unten.
+    // Jeder Kegel wird nur einmal gezeichnet (Textur); pro Bild ändern sich nur Deckkraft
+    // und Winkel – das kostet kaum Rechenzeit.
+    _makeSun() {
+        let W = this.W, H = this.H;
+        let left = Math.random() < 0.5;
+        let sx = (left ? rand(0.08, 0.35) : rand(0.65, 0.92)) * W, sy = -rand(0.08, 0.2) * H;
+        let sun = { sx, sy, beams: [] };
+        // Richtung zur Bildschirmmitte unten, Fächer darum
+        let mid = Math.atan2(W * 0.5 - sx, H - sy) * 180 / Math.PI;
+        let n = Math.round(rand(5, 8)), spread = rand(38, 55);
+        let len = Math.hypot(Math.max(sx, W - sx), H - sy) * 1.05;
+        for (let i = 0; i < n; i++) {
+            let w = Math.round(rand(0.05, 0.16) * W * this.size / 100);
+            let a = new St.DrawingArea({ reactive: false, width: w, height: Math.round(len) });
+            a.connect("repaint", area => this._drawBeam(area));
+            a.set_pivot_point(0.5, 0);
+            a.set_position(sx - w / 2, sy);
+            a.opacity = 0;
+            this.layer.add_child(a);
+            sun.beams.push({
+                actor: a,
+                ang: mid + (i / Math.max(1, n - 1) - 0.5) * spread + rand(-4, 4),
+                half: Math.atan2(w / 2, len * 0.6) * 180 / Math.PI,
+                f1: rand(0.08, 0.2), f2: rand(0.25, 0.5), ph: rand(0, 6.28),
+                sway: rand(0.6, 1.6), a0: rand(0.7, 1), cur: 0,
+            });
+        }
+        // warmer Schein an der Sonne
+        let r = Math.round(Math.min(W, H) * 0.45);
+        let glow = new St.DrawingArea({ reactive: false, width: 2 * r, height: 2 * r });
+        glow.connect("repaint", area => {
+            let cr = area.get_context(), [w, h] = area.get_surface_size();
+            let g = new Cairo.RadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+            g.addColorStopRGBA(0, 1, 0.95, 0.8, 0.55);
+            g.addColorStopRGBA(0.4, 1, 0.92, 0.75, 0.2);
+            g.addColorStopRGBA(1, 1, 0.9, 0.7, 0);
+            cr.setSource(g);
+            cr.paint();
+            cr.$dispose();
+        });
+        glow.set_position(sx - r, sy - r);
+        glow.opacity = 0;
+        this.layer.add_child(glow);
+        sun.glow = glow;
+        this.sunRays = sun;
+        this.sunLevel = 0;
+    }
+
+    _drawBeam(area) {
+        let cr = area.get_context(), [w, h] = area.get_surface_size();
+        // mehrere ineinanderliegende Keile → weiche Ränder; längs nach unten ausblenden
+        let layers = 6;
+        for (let j = 0; j < layers; j++) {
+            let f = 1 - j / layers;                     // Breite: außen → innen
+            let top = w * 0.06 * f, bot = w * 0.5 * f;
+            let g = new Cairo.LinearGradient(0, 0, 0, h);
+            g.addColorStopRGBA(0, 1, 0.96, 0.84, 0.16);
+            g.addColorStopRGBA(0.4, 1, 0.95, 0.82, 0.11);
+            g.addColorStopRGBA(1, 1, 0.94, 0.8, 0);
+            cr.setSource(g);
+            cr.moveTo(w / 2 - top, 0);
+            cr.lineTo(w / 2 + top, 0);
+            cr.lineTo(w / 2 + bot, h);
+            cr.lineTo(w / 2 - bot, h);
+            cr.closePath();
+            cr.fill();
+        }
+        cr.$dispose();
+    }
+
+    _dropSun() {
+        if (!this.sunRays) return;
+        for (let b of this.sunRays.beams) b.actor.destroy();
+        this.sunRays.glow.destroy();
+        this.sunRays = null;
+        this.sunLevel = 0;
+    }
+
+    _stepSun(t, dt, level, windPx) {
+        let sun = this.sunRays, k = Math.min(1.5, this.intensity / 100);
+        this.sunLevel += (level - this.sunLevel) * Math.min(1, dt * 0.8);
+        if (level === 0 && this.sunLevel < 0.004) { this._dropSun(); return; }
+        let L = this.sunLevel * k;
+        for (let b of sun.beams) {
+            // Nebel zieht durch: zwei langsame Schwingungen, gelegentlich fast ganz weg
+            let fog = 0.5 + 0.3 * Math.sin(t * b.f1 + b.ph) + 0.2 * Math.sin(t * b.f2 + b.ph * 1.7);
+            b.cur = b.a0 * (0.3 + 0.7 * smooth(fog));
+            b.actor.opacity = Math.round(255 * Math.min(1, 1.3 * L * b.cur));
+            b.actor.rotation_angle_z = -(b.ang + Math.sin(t * 0.05 + b.ph) * b.sway + windPx * 0.004);
+        }
+        sun.glow.opacity = Math.round(255 * Math.min(1, L * 0.8));
+    }
+
+    // Helligkeit eines Staubkorns: nur im Lichtkegel sichtbar
+    _inBeam(x, y) {
+        let sun = this.sunRays;
+        if (!sun) return 0;
+        let ang = Math.atan2(x - sun.sx, y - sun.sy) * 180 / Math.PI, best = 0;
+        for (let b of sun.beams) {
+            let d = (ang + b.actor.rotation_angle_z) / b.half;
+            best = Math.max(best, Math.exp(-d * d) * b.cur);
+        }
+        return best;
+    }
+
+    _spawnMote() {
+        let p = this._get("mote"), sun = this.sunRays;
+        let r = rand(1, 2.4) * this.size / 100, d = Math.max(1, Math.round(r * 2));
+        p.actor.set_size(d, d);
+        p.actor.set_style("background-color: rgb(255,246,220); border-radius: %dpx;".replace("%d", Math.ceil(d / 2)));
+        p.actor.opacity = 0;
+        p.t = 0;
+        p.life = rand(8, 16);
+        p.vx = rand(-6, 6);
+        p.vy = rand(-3, 6);
+        p.amp = rand(4, 14); p.freq = rand(0.2, 0.6); p.ph = rand(0, 6.28);
+        p.a0 = rand(120, 230);
+        // bevorzugt dort, wo Licht ist
+        let x = rand(0, this.W), y = rand(0, this.H);
+        if (sun && sun.beams.length) {
+            let b = sun.beams[Math.floor(Math.random() * sun.beams.length)];
+            let dist = rand(0.15, 0.95) * (this.H - sun.sy) * 1.1;
+            let a = (-b.actor.rotation_angle_z + rand(-1, 1) * b.half) * Math.PI / 180;
+            x = sun.sx + Math.sin(a) * dist;
+            y = sun.sy + Math.cos(a) * dist;
+        }
+        p.x = x; p.y = y;
+    }
+
     _drawLeaf(area) {
         let cr = area.get_context();
         let [w, h] = area.get_surface_size();
@@ -480,7 +623,7 @@ class Weather {
         let windPx = dir * mag * gust * 200;
 
         if (ev) {
-            let rates = { rain: 170 * k, leaf: 5 * k * gust, snow: 5 * k };
+            let rates = { rain: 170 * k, leaf: 5 * k * gust, snow: 5 * k, sun: 3 * k };
             for (let kind in ev.kinds) {
                 this.acc[kind] += rates[kind] * ev.kinds[kind] * env * dt;
                 let n = Math.min(Math.floor(this.acc[kind]), 40);
@@ -488,6 +631,7 @@ class Weather {
                 for (let i = 0; i < n; i++) {
                     if (kind === "rain") this._spawnRain(windPx);
                     else if (kind === "leaf") this._spawnLeaf(windPx);
+                    else if (kind === "sun") { if (this.sunRays) this._spawnMote(); }
                     else this._spawnSnow();
                 }
             }
@@ -498,6 +642,7 @@ class Weather {
         this.shadeLevel += (target - this.shadeLevel) * Math.min(1, dt * 2);
         if (Math.abs(target - this.shadeLevel) < 0.5) this.shadeLevel = target;
         this.shade.opacity = Math.round(this.shadeLevel);
+        if (this.sunRays) this._stepSun(t, dt, ev && ev.kinds.sun ? env * ev.kinds.sun : 0, windPx);
 
         let W = this.W, H = this.H;
         let rainRot = -Math.atan2(windPx * 0.7, 1000) * 180 / Math.PI;
@@ -530,6 +675,16 @@ class Weather {
                 if (p.y > p.floor || p.t > 0.8) { this._free(i); continue; }
                 a.opacity = Math.round(p.a0 * Math.max(0, 1 - p.t / 0.8));
                 a.set_position(p.x, p.y);
+            } else if (p.kind === "mote") {
+                p.t += dt;
+                p.x += (p.vx + windPx * 0.03) * dt;
+                p.y += p.vy * dt;
+                if (p.t > p.life || !this.sunRays) { this._free(i); continue; }
+                let fade = smooth(p.t / 2) * smooth((p.life - p.t) / 2);
+                let x = p.x + Math.sin(t * p.freq + p.ph) * p.amp;
+                a.opacity = Math.round(p.a0 * fade * this.sunLevel * this._inBeam(x, p.y) *
+                                       (0.75 + 0.25 * Math.sin(t * 3 + p.ph)));
+                a.set_position(x, p.y);
             } else if (p.kind === "snow") {
                 p.y += p.vy * dt;
                 p.x += windPx * 0.25 * p.drift * dt;
@@ -551,7 +706,7 @@ class Weather {
             }
         }
 
-        if (!ev && !this.parts.length && this.shadeLevel < 0.5) this._idle();
+        if (!ev && !this.parts.length && this.shadeLevel < 0.5 && !this.sunRays) this._idle();
     }
 
     destroy() {
@@ -566,6 +721,7 @@ class Weather {
         for (let id of this.dockTimers) GLib.source_remove(id);
         Main.layoutManager.disconnect(this._monitorsId);
         this.settings.finalize();
+        this._dropSun();
         this.layer.destroy();
     }
 }
@@ -578,6 +734,7 @@ function enable() {
         startRain: () => weather && weather.trigger({ rain: 1 }),
         startLeaves: () => weather && weather.trigger({ leaf: 1 }),
         startSnow: () => weather && weather.trigger({ snow: 1 }),
+        startSun: () => weather && weather.trigger({ sun: 1 }),
         stop: () => weather && weather.stop(),
         instance: () => weather,
     };

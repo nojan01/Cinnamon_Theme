@@ -517,7 +517,7 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   - Verläufe mit Transparenz zeichnet St nur in der Endfarbe → kein Verlauf.
   Beim Abschalten der Erweiterung gilt wieder `.menu` aus dem Theme.
 
-## 17. Wetter auf dem Desktop (Regen, Blätter, Schnee)
+## 17. Wetter auf dem Desktop (Regen, Blätter, Schnee, Sonnenstrahlen)
 
 - Cinnamon-Erweiterung `extensions/weather@cinnamon-theme` „Nebel: Wetter“, Baustein
   `weather` in `install.sh`. Ersetzt den Schneefall-Prototyp `snow@cinnamon-theme`
@@ -562,6 +562,14 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   beim Zoomen –, bleibt die alte Leiste gültig. Getestet: 36 / 52 / 64 px.
 - 1.0.7 behebt: Beim Ausblenden blieb die Regen-Abdunkelung durch Rundung bei
   Deckkraft 3 hängen – das Ereignis endete nie, es wurde kein neues eingeplant.
+- Sonnenstrahlen im Nebel (Schalter „Sonnenstrahlen im Nebel“, Standard an, automatisch nur
+  8–18 Uhr, unabhängig von der Jahreszeit): Eine Sonne knapp über dem oberen Rand (zufällig
+  links oder rechts) mit warmem Schein; davon fächern 5–8 Lichtkegel zur Bildschirmmitte.
+  Jeder Kegel ist eine `St.DrawingArea`, einmal mit Cairo gezeichnet (6 ineinanderliegende
+  Keile für weiche Ränder, längs ausgeblendet); pro Bild ändern sich nur Deckkraft (zwei
+  langsame Schwingungen = durchziehender Nebel) und Winkel (leichtes Pendeln, etwas Wind).
+  Dazu Staubkörnchen, die nur im Lichtkegel aufleuchten. Erste Fassung war mit ca. 7–10 %
+  Deckkraft auf dem grauen Hintergrund unsichtbar → Keile 0,16/0,11, Mindesthelligkeit 30 %.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
   ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 

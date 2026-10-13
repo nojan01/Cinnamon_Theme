@@ -7,6 +7,7 @@
                 "tooltip": "Regentropfen, die auf die Plank-Leiste treffen, zerspringen in kleine Spritzer." },
     "leaves": { "type": "switch", "default": true, "description": "Blätter im Wind" },
     "snow": { "type": "switch", "default": true, "description": "Schneefall" },
+    "sun": { "type": "switch", "default": true, "description": "Sonnenstrahlen im Nebel", "tooltip": "Nur tagsüber (8–18 Uhr), unabhängig von der Jahreszeit" },
     "seasonal": { "type": "switch", "default": true, "description": "Nach Jahreszeit",
                   "tooltip": "Blätter von September bis November, Schnee von Dezember bis Februar, Regen von März bis November." },
 
@@ -26,6 +27,7 @@
     "btn-rain": { "type": "button", "description": "Regenschauer", "callback": "startRain" },
     "btn-leaves": { "type": "button", "description": "Blätter", "callback": "startLeaves" },
     "btn-snow": { "type": "button", "description": "Schnee", "callback": "startSnow" },
+    "btn-sun": { "type": "button", "description": "Sonnenstrahlen", "callback": "startSun" },
     "btn-stop": { "type": "button", "description": "Beenden", "callback": "stop" },
 
     "h-behaviour": { "type": "header", "description": "Verhalten" },
