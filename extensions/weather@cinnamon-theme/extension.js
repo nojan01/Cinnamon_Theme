@@ -156,11 +156,11 @@ class Weather {
         if (!this.fogLayer) return;
         for (let f of this.fogParts) f.actor.destroy();
         this.fogParts = [];
-        let W = this.W, H = this.H, SC = 2, n = 4;
+        let W = this.W, H = this.H, SC = 2, n = 6;
         this.fogLayer.set_position(0, 0);
         this.fogLayer.set_size(W, H);
         for (let i = 0; i < n; i++) {
-            let w = Math.round(W * rand(1.0, 1.4)), h = Math.round(H * rand(0.35, 0.5));
+            let w = Math.round(W * rand(0.5, 0.9)), h = Math.round(H * rand(0.25, 0.4));
             let a = new Clutter.Actor({ reactive: false, width: w, height: h });
             let img = this._fogTexture(Math.round(w / SC), Math.round(h / SC), Math.random() * 1e9);
             if (img) {
@@ -172,9 +172,9 @@ class Weather {
             this.fogLayer.add_child(a);
             this.fogParts.push({
                 actor: a, w: w, h: h,
-                bx: W / 2 - w / 2 + rand(-0.15, 0.15) * W,
+                bx: rand(-0.3, 1.0) * W,
                 by: (0.1 + 0.8 * (i + rand(0, 1)) / n) * H - h / 2,
-                ax: rand(0.1, 0.2) * W, wx: 2 * Math.PI / rand(90, 180),
+                ax: rand(0.01, 0.03) * W, wx: 2 * Math.PI / rand(90, 180),
                 ay: rand(0.02, 0.05) * H, wy: 2 * Math.PI / rand(50, 110),
                 wo: 2 * Math.PI / rand(25, 60), ws: 2 * Math.PI / rand(30, 70),
                 ph: rand(0, 6.28), a0: rand(0.7, 1), dx: 0, sp: rand(0.7, 1.3),
@@ -187,9 +187,9 @@ class Weather {
     _fogTexture(tw, th, seed) {
         let r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
         let blobs = [];
-        for (let k = 0; k < 40; k++) {
-            let u = (r() + r() + r()) / 3;
-            let s = th * (0.12 + r() * 0.16);
+        for (let k = 0; k < 30; k++) {
+            let u = 0.1 + 0.8 * (r() + r()) / 2;
+            let s = th * (0.08 + r() * 0.14);
             blobs.push([u * tw, th * (0.5 + (r() - 0.5) * 0.35), 1 / (2 * s * s), 0.4 + r() * 0.6]);
         }
         // Dichte auf grobem Raster, dazwischen bilinear
@@ -296,7 +296,7 @@ class Weather {
         if (ev) this.fogDir = ev.dir;
         if (!this.fogDir) this.fogDir = Math.random() < 0.5 ? -1 : 1;
         let dir = Math.sign(this.wind) || this.fogDir;
-        let target = dir * (3 + Math.abs(this.wind) / 100 * 12);
+        let target = dir * (6 + Math.abs(this.wind) / 100 * 24);
         this.fogV = (this.fogV || 0) + (target - (this.fogV || 0)) * Math.min(1, dt / 20);
         for (let f of this.fogParts) {
             let a = f.actor;

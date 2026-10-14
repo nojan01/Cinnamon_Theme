@@ -582,16 +582,18 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   eigene Bildrate 2–30, Standard 10): Ständig sichtbare, zarte Schwaden über dem festen
   Hintergrund. Eigene Ebene `fogLayer` direkt unter der Wetterebene – also über Hintergrund,
   Symbolen und Desklets, aber unter allen Fenstern (Reihenfolge wird wie die Wetterebene
-  nach jedem Stapelwechsel neu gesetzt). 4 Schwaden; jede ist eine einmal berechnete Textur
+  nach jedem Stapelwechsel neu gesetzt). 6 Schwaden (je 50–90 % der Breite, gegliedert aus 30 Wolken); jede ist eine einmal berechnete Textur
   (`_fogTexture`, `Clutter.Image`, halbe Auflösung, ×2 gestreckt, ca. 60 ms beim Start):
-  Dichte aus 40 weichen Gauß-Wolken auf grobem Raster, bilinear verfeinert, zum Rand sicher
+  Dichte aus weichen Gauß-Wolken auf grobem Raster, bilinear verfeinert, zum Rand sicher
   auf 0 und mit ±3 Stufen Rauschen (Dithering). Erste Fassung (Cairo-Kreise, Drittel-Auflösung,
   Deckkraft ≤ 12 %) war kaum sichtbar, zeigte Streifen (zu wenige Helligkeitsstufen) und eine
   harte Kante (Kreise ragten über die Zeichenfläche hinaus). Pro Bild ändern sich nur Lage (Sinus), Deckkraft (atmend) und
   Höhe. Eigene `Clutter.Timeline` mit niedriger Bildrate; steht still, solange ein maximiertes
   oder Vollbild-Fenster den Desktop verdeckt (Prüfung alle 2 s). Regen verdichtet den Nebel,
   Sonne lichtet ihn. Die Schwaden treiben langsam in Windrichtung (Einstellung „Wind“,
-  3 + |Wind|/100 × 12 px/s, je Schwade ×0,7–1,3; bei Wind 0 Richtung des letzten Ereignisses;
+  6 + |Wind|/100 × 24 px/s, je Schwade ×0,7–1,3; Pendeln nur noch 1–3 % der
+  Breite – stärkeres Pendeln hob die Drift auf, mit großen, sehr weichen Schwaden war die
+  Bewegung mit bloßem Auge nicht zu sehen; bei Wind 0 Richtung des letzten Ereignisses;
   Richtungswechsel über ca. 20 s überblendet). Verlassen sie den Bildschirm, kommen sie auf der
   anderen Seite wieder herein (Ränder der Textur sind weich). Gemessen (xrdp, 10 Bilder/s): cinnamon ca. 12,0 % → 13,9 % eines Kerns.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
