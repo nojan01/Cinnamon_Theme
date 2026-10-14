@@ -177,7 +177,7 @@ class Weather {
                 ax: rand(0.1, 0.2) * W, wx: 2 * Math.PI / rand(90, 180),
                 ay: rand(0.02, 0.05) * H, wy: 2 * Math.PI / rand(50, 110),
                 wo: 2 * Math.PI / rand(25, 60), ws: 2 * Math.PI / rand(30, 70),
-                ph: rand(0, 6.28), a0: rand(0.7, 1),
+                ph: rand(0, 6.28), a0: rand(0.7, 1), dx: 0, sp: rand(0.7, 1.3),
             });
         }
     }
@@ -289,9 +289,22 @@ class Weather {
         if (ev && ev.kinds.rain) boost += 0.4 * Math.min(1, this.shadeLevel / 40);
         if (this.sunRays) boost -= 0.35 * this.sunLevel;
         let k = this.fogIntensity / 100 * boost;
+        // langsames Treiben in Windrichtung (Einstellung „Wind“; bei 0 Richtung des letzten
+        // Ereignisses), Richtungswechsel weich überblendet
+        let dt = this.fogT ? Math.min(1, Math.max(0, t - this.fogT)) : 0;
+        this.fogT = t;
+        if (ev) this.fogDir = ev.dir;
+        if (!this.fogDir) this.fogDir = Math.random() < 0.5 ? -1 : 1;
+        let dir = Math.sign(this.wind) || this.fogDir;
+        let target = dir * (3 + Math.abs(this.wind) / 100 * 12);
+        this.fogV = (this.fogV || 0) + (target - (this.fogV || 0)) * Math.min(1, dt / 20);
         for (let f of this.fogParts) {
             let a = f.actor;
-            a.set_position(f.bx + Math.sin(t * f.wx + f.ph) * f.ax, f.by + Math.sin(t * f.wy + f.ph * 1.3) * f.ay);
+            f.dx += this.fogV * f.sp * dt;
+            let x = f.bx + f.dx, span = this.W + f.w + 2 * f.ax;
+            if (x - f.ax > this.W) f.dx -= span;
+            else if (x + f.w + f.ax < 0) f.dx += span;
+            a.set_position(f.bx + f.dx + Math.sin(t * f.wx + f.ph) * f.ax, f.by + Math.sin(t * f.wy + f.ph * 1.3) * f.ay);
             a.opacity = Math.round(255 * Math.min(1, k * f.a0 * (0.55 + 0.45 * Math.sin(t * f.wo + f.ph * 0.7))));
             a.scale_y = 1 + 0.08 * Math.sin(t * f.ws + f.ph);
         }

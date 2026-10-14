@@ -590,7 +590,10 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   harte Kante (Kreise ragten über die Zeichenfläche hinaus). Pro Bild ändern sich nur Lage (Sinus), Deckkraft (atmend) und
   Höhe. Eigene `Clutter.Timeline` mit niedriger Bildrate; steht still, solange ein maximiertes
   oder Vollbild-Fenster den Desktop verdeckt (Prüfung alle 2 s). Regen verdichtet den Nebel,
-  Sonne lichtet ihn. Gemessen (xrdp, 10 Bilder/s): cinnamon ca. 12,0 % → 13,9 % eines Kerns.
+  Sonne lichtet ihn. Die Schwaden treiben langsam in Windrichtung (Einstellung „Wind“,
+  3 + |Wind|/100 × 12 px/s, je Schwade ×0,7–1,3; bei Wind 0 Richtung des letzten Ereignisses;
+  Richtungswechsel über ca. 20 s überblendet). Verlassen sie den Bildschirm, kommen sie auf der
+  anderen Seite wieder herein (Ränder der Textur sind weich). Gemessen (xrdp, 10 Bilder/s): cinnamon ca. 12,0 % → 13,9 % eines Kerns.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
   ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 
