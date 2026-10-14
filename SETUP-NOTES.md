@@ -596,6 +596,13 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   Bewegung mit bloßem Auge nicht zu sehen; bei Wind 0 Richtung des letzten Ereignisses;
   Richtungswechsel über ca. 20 s überblendet). Verlassen sie den Bildschirm, kommen sie auf der
   anderen Seite wieder herein (Ränder der Textur sind weich). Gemessen (xrdp, 10 Bilder/s): cinnamon ca. 12,0 % → 13,9 % eines Kerns.
+- Einstellungen überstehen Updates (1.0.20): Cinnamon übernimmt bei geändertem
+  settings-schema.json Zahlenwerte nur, wenn sie strikt zwischen min und max liegen
+  (`_checkSanity`: `val < max && val > min`) – ein Regler am Rand (z. B. Pause 1 min) fiel bei
+  jedem Update auf den Standard zurück. Die Erweiterung hält deshalb eine Kopie aller Werte in
+  `~/.config/nebel/weather-settings.json` (mit dem Schema-md5; aktualisiert bei jeder Änderung)
+  und stellt nach einem Update Werte wieder her, die auf den Standard zurückgefallen sind.
+  Greift ab dem zweiten Update nach 1.0.20 (die Kopie muss erst einmal angelegt sein).
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
   ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 

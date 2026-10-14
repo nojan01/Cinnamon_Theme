@@ -38,6 +38,8 @@ function smooth(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x)
 class Weather {
     constructor() {
         this.settings = new Settings.ExtensionSettings(this, UUID);
+        this._keepSettings();
+        this._keepId = this.settings.connect("settings-changed", () => this._saveKeep());
         const resched = () => { if (!this.event) this._schedule(); };
         this.settings.bind("active", "active", () => this._onActive());
         this.settings.bind("toggle-key", "toggleKey", () => this._bindKey());
@@ -141,6 +143,45 @@ class Weather {
     // Sparsam: 4 Schwaden werden einmal in Drittel-Auflösung gezeichnet und hochskaliert
     // (weich, wenig Speicher); danach ändern sich nur Lage, Höhe und Deckkraft – mit
     // eigener, niedriger Bildrate. Ist der Desktop verdeckt (maximiertes Fenster), steht alles.
+    // Cinnamon übernimmt bei einem Update (geändertes settings-schema.json) Zahlenwerte nur,
+    // wenn sie strikt zwischen min und max liegen – ein Regler am Rand (z. B. Pause 1 min)
+    // fällt auf den Standard zurück. Daher eine eigene Kopie der Werte, die nach einem Update
+    // genau solche verworfenen Werte wiederherstellt.
+    _keepPath() {
+        return GLib.build_filenamev([GLib.get_user_config_dir(), "nebel", "weather-settings.json"]);
+    }
+
+    _keepSettings() {
+        let data = this.settings.settingsData;
+        try {
+            let [ok, bytes] = GLib.file_get_contents(this._keepPath());
+            let keep = JSON.parse(new TextDecoder().decode(bytes));
+            if (ok && keep.md5 !== data.__md5__) {
+                for (let key in keep.values) {
+                    let d = data[key], v = keep.values[key];
+                    if (!d || (d.type !== "spinbutton" && d.type !== "scale")) continue;
+                    if (d.value === d.default && v !== d.value && v >= d.min && v <= d.max)
+                        this.settings.setValue(key, v);
+                }
+            }
+        } catch (e) { /* noch keine Kopie */ }
+        this._saveKeep();
+    }
+
+    _saveKeep() {
+        let data = this.settings.settingsData, values = {};
+        for (let key in data)
+            if (data[key] && data[key].value !== undefined && typeof data[key].value !== "object")
+                values[key] = data[key].value;
+        try {
+            let path = this._keepPath();
+            GLib.mkdir_with_parents(GLib.path_get_dirname(path), 0o755);
+            GLib.file_set_contents(path, JSON.stringify({ md5: data.__md5__, values }, null, 1));
+        } catch (e) {
+            global.logError("weather: Sicherung der Einstellungen: " + e);
+        }
+    }
+
     _fogInit() {
         this.fogLayer = new Clutter.Actor({ reactive: false, clip_to_allocation: true, visible: false });
         global.window_group.add_child(this.fogLayer);
@@ -953,6 +994,7 @@ class Weather {
         if (this.plankSettings) this.plankSettings.disconnect(this._plankId);
         for (let id of this.dockTimers) GLib.source_remove(id);
         Main.layoutManager.disconnect(this._monitorsId);
+        if (this._keepId) this.settings.disconnect(this._keepId);
         this.settings.finalize();
         this._dropSun();
         this.layer.destroy();
