@@ -7,7 +7,7 @@ Files: *
 Copyright: 2026 Norbert Jander
 License: MIT
 
-Files: Nebel/* plank/themes/CBlue/*
+Files: Nebel/* CBlue/* plank/themes/CBlue/* plank/themes/Nebel-Grau/* plank/themes/Nebel-Transparent/*
 Copyright: Bundy01 (CBlue)
            2026 Norbert Jander (Änderungen für Nebel)
 License: GPL-3.0

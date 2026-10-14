@@ -462,7 +462,7 @@ Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-for
 - Depends: nur Standardpakete. fastfetch und plank-reloaded stehen unter Suggests, weil sie Fremdquellen brauchen. Diese richtet `nebel-einrichten` selbst ein (siehe 14).
 - Lizenzen (siehe `COPYRIGHT.md`):
   - MIT, © 2026 Norbert Jander (`LICENSE`): eigene Bestandteile
-  - GPL-3.0 (`LICENSE.GPL-3.0`): `Nebel/` (abgeleitet von CBlue) und `CBlue/`
+  - GPL-3.0 (`LICENSE.GPL-3.0`): `Nebel/` und die Dock-Themes `Nebel-Grau`/`Nebel-Transparent` (abgeleitet von CBlue) sowie `CBlue/`
   - OFL 1.1: JetBrains Mono
   - Der Mauszeiger (Bibata, GPL-3.0) wird nur erzeugt und nicht mitgeliefert.
 - Copyright-Kopfzeile in allen eigenen Skripten und Desklets, Anzeige im Einrichtungsdialog und mit `nebel-einrichten --version`.
