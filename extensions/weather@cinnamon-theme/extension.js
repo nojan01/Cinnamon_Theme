@@ -3,6 +3,7 @@
 // unregelmäßigen Abständen. Die Ebene liegt über Hintergrundbild, Desktop-Symbolen
 // und Desklets, aber immer unter allen Programmfenstern.
 const Clutter = imports.gi.Clutter;
+const Cogl = imports.gi.Cogl;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Meta = imports.gi.Meta;
@@ -155,48 +156,83 @@ class Weather {
         if (!this.fogLayer) return;
         for (let f of this.fogParts) f.actor.destroy();
         this.fogParts = [];
-        let W = this.W, H = this.H, SC = 3, n = 4;
+        let W = this.W, H = this.H, SC = 2, n = 4;
         this.fogLayer.set_position(0, 0);
         this.fogLayer.set_size(W, H);
         for (let i = 0; i < n; i++) {
-            let w = Math.round(W * rand(0.9, 1.3) / SC), h = Math.round(H * rand(0.3, 0.45) / SC);
-            let seed = Math.random() * 1e9;
-            let a = new St.DrawingArea({ reactive: false, width: w, height: h });
-            a.connect("repaint", area => this._drawFog(area, seed));
+            let w = Math.round(W * rand(1.0, 1.4)), h = Math.round(H * rand(0.35, 0.5));
+            let a = new Clutter.Actor({ reactive: false, width: w, height: h });
+            let img = this._fogTexture(Math.round(w / SC), Math.round(h / SC), Math.random() * 1e9);
+            if (img) {
+                a.set_content(img);
+                a.set_content_gravity(Clutter.ContentGravity.RESIZE_FILL);
+                a.set_content_scaling_filters(Clutter.ScalingFilter.LINEAR, Clutter.ScalingFilter.LINEAR);
+            }
             a.set_pivot_point(0.5, 0.5);
-            a.set_scale(SC, SC);
             this.fogLayer.add_child(a);
             this.fogParts.push({
-                actor: a, w: w * SC, h: h * SC,
-                bx: W / 2 - (w * SC) / 2 + rand(-0.15, 0.15) * W,
-                by: (0.15 + 0.7 * (i + rand(0, 1)) / n) * H - (h * SC) / 2,
-                ax: rand(0.08, 0.18) * W, wx: 2 * Math.PI / rand(150, 300),
-                ay: rand(0.01, 0.04) * H, wy: 2 * Math.PI / rand(60, 140),
-                wo: 2 * Math.PI / rand(40, 100), ws: 2 * Math.PI / rand(30, 70),
-                ph: rand(0, 6.28), a0: rand(0.6, 1),
+                actor: a, w: w, h: h,
+                bx: W / 2 - w / 2 + rand(-0.15, 0.15) * W,
+                by: (0.1 + 0.8 * (i + rand(0, 1)) / n) * H - h / 2,
+                ax: rand(0.1, 0.2) * W, wx: 2 * Math.PI / rand(90, 180),
+                ay: rand(0.02, 0.05) * H, wy: 2 * Math.PI / rand(50, 110),
+                wo: 2 * Math.PI / rand(25, 60), ws: 2 * Math.PI / rand(30, 70),
+                ph: rand(0, 6.28), a0: rand(0.7, 1),
             });
         }
     }
 
-    _drawFog(area, seed) {
-        let cr = area.get_context(), [w, h] = area.get_surface_size();
-        // kleiner, reproduzierbarer Zufall, damit Neuzeichnen dieselbe Schwade ergibt
+    // Einmal berechnete Nebeltextur: Dichte aus weichen Gauß-Wolken, zum Rand hin sicher auf 0,
+    // mit leichtem Rauschen (Dithering), damit die blassen Verläufe keine Stufen/Streifen bilden.
+    _fogTexture(tw, th, seed) {
         let r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-        for (let k = 0; k < 45; k++) {
-            // Wolken eher in der Mitte, zu den Enden dünner
+        let blobs = [];
+        for (let k = 0; k < 40; k++) {
             let u = (r() + r() + r()) / 3;
-            let x = u * w, y = h * (0.5 + (r() - 0.5) * 0.45);
-            let rad = h * (0.25 + r() * 0.35);
-            let g = new Cairo.RadialGradient(x, y, 0, x, y, rad);
-            let al = 0.05 + r() * 0.07;
-            g.addColorStopRGBA(0, 0.88, 0.90, 0.93, al);
-            g.addColorStopRGBA(0.5, 0.86, 0.88, 0.92, al * 0.55);
-            g.addColorStopRGBA(1, 0.85, 0.87, 0.9, 0);
-            cr.setSource(g);
-            cr.arc(x, y, rad, 0, 2 * Math.PI);
-            cr.fill();
+            let s = th * (0.12 + r() * 0.16);
+            blobs.push([u * tw, th * (0.5 + (r() - 0.5) * 0.35), 1 / (2 * s * s), 0.4 + r() * 0.6]);
         }
-        cr.$dispose();
+        // Dichte auf grobem Raster, dazwischen bilinear
+        let G = 8, gw = Math.ceil(tw / G) + 2, gh = Math.ceil(th / G) + 2;
+        let grid = new Float32Array(gw * gh), max = 0;
+        for (let gy = 0; gy < gh; gy++)
+            for (let gx = 0; gx < gw; gx++) {
+                let x = gx * G, y = gy * G, d = 0;
+                for (let b of blobs) {
+                    let dx = x - b[0], dy = y - b[1];
+                    d += b[3] * Math.exp(-(dx * dx + dy * dy) * b[2]);
+                }
+                let ex = Math.max(0, Math.sin(Math.PI * Math.min(1, x / tw)));
+                let ey = Math.max(0, Math.sin(Math.PI * Math.min(1, y / th)));
+                d *= Math.pow(ex, 1.5) * ey * ey;
+                grid[gy * gw + gx] = d;
+                if (d > max) max = d;
+            }
+        if (max <= 0) return null;
+        let data = new Uint8Array(tw * th * 4), cr = 0.88, cg = 0.90, cb = 0.93, top = 0.6;
+        for (let y = 0; y < th; y++) {
+            let gy = y / G, y0 = Math.floor(gy), fy = gy - y0;
+            for (let x = 0; x < tw; x++) {
+                let gx = x / G, x0 = Math.floor(gx), fx = gx - x0, o = y0 * gw + x0;
+                let d = (grid[o] * (1 - fx) + grid[o + 1] * fx) * (1 - fy) +
+                        (grid[o + gw] * (1 - fx) + grid[o + gw + 1] * fx) * fy;
+                let al = top * (1 - Math.exp(-2.2 * d / max)) / (1 - Math.exp(-2.2));
+                let v = al * 255;
+                // Rauschen ±3 Stufen, nur wo Nebel ist (Ränder bleiben exakt 0)
+                if (v > 0.5) v += (Math.random() + Math.random() - 1) * 3 * Math.min(1, v / 8);
+                let A = Math.max(0, Math.min(255, Math.round(v))), i = (y * tw + x) * 4;
+                data[i] = Math.round(A * cr); data[i + 1] = Math.round(A * cg);
+                data[i + 2] = Math.round(A * cb); data[i + 3] = A;
+            }
+        }
+        let img = new Clutter.Image();
+        try {
+            img.set_data(data, Cogl.PixelFormat.RGBA_8888_PRE, tw, th, tw * 4);
+        } catch (e) {
+            global.logError("weather: Nebeltextur: " + e);
+            return null;
+        }
+        return img;
     }
 
     _fogRestack() {
@@ -257,7 +293,7 @@ class Weather {
             let a = f.actor;
             a.set_position(f.bx + Math.sin(t * f.wx + f.ph) * f.ax, f.by + Math.sin(t * f.wy + f.ph * 1.3) * f.ay);
             a.opacity = Math.round(255 * Math.min(1, k * f.a0 * (0.55 + 0.45 * Math.sin(t * f.wo + f.ph * 0.7))));
-            a.scale_y = 3 * (1 + 0.08 * Math.sin(t * f.ws + f.ph));
+            a.scale_y = 1 + 0.08 * Math.sin(t * f.ws + f.ph);
         }
     }
 
