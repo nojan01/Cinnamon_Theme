@@ -517,7 +517,7 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   - Verläufe mit Transparenz zeichnet St nur in der Endfarbe → kein Verlauf.
   Beim Abschalten der Erweiterung gilt wieder `.menu` aus dem Theme.
 
-## 17. Wetter auf dem Desktop (Regen, Blätter, Schnee, Sonnenstrahlen)
+## 17. Wetter auf dem Desktop (Regen, Blätter, Schnee, Sonnenstrahlen, Nebelschwaden)
 
 - Cinnamon-Erweiterung `extensions/weather@cinnamon-theme` „Nebel: Wetter“, Baustein
   `weather` in `install.sh`. Ersetzt den Schneefall-Prototyp `snow@cinnamon-theme`
@@ -578,6 +578,15 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   langsame Schwingungen = durchziehender Nebel) und Winkel (leichtes Pendeln, etwas Wind).
   Dazu Staubkörnchen, die nur im Lichtkegel aufleuchten. Erste Fassung war mit ca. 7–10 %
   Deckkraft auf dem grauen Hintergrund unsichtbar → Keile 0,16/0,11, Mindesthelligkeit 30 %.
+- Nebelschwaden (Schalter „Wabernde Nebelschwaden“, Standard an; Stärke 10–150 %, Standard 60;
+  eigene Bildrate 2–30, Standard 10): Ständig sichtbare, zarte Schwaden über dem festen
+  Hintergrund. Eigene Ebene `fogLayer` direkt unter der Wetterebene – also über Hintergrund,
+  Symbolen und Desklets, aber unter allen Fenstern (Reihenfolge wird wie die Wetterebene
+  nach jedem Stapelwechsel neu gesetzt). 4 Schwaden, einmal mit Cairo in Drittel-Auflösung
+  gezeichnet und ×3 skaliert; pro Bild ändern sich nur Lage (Sinus), Deckkraft (atmend) und
+  Höhe. Eigene `Clutter.Timeline` mit niedriger Bildrate; steht still, solange ein maximiertes
+  oder Vollbild-Fenster den Desktop verdeckt (Prüfung alle 2 s). Regen verdichtet den Nebel,
+  Sonne lichtet ihn. Gemessen (xrdp, 10 Bilder/s): cinnamon ca. 12,0 % → 13,9 % eines Kerns.
 - Hinweis: Wird die Einstellungsdatei unter `~/.config/cinnamon/spices/` von außen
   ersetzt, übernimmt die laufende Erweiterung das erst nach dem Neuladen.
 

@@ -50,6 +50,9 @@ class Weather {
         this.settings.bind("pause-covered", "pauseCovered", () => this._checkCovered());
         this.settings.bind("show-in-rdp", "showInRdp", () => this._checkCovered());
         this.settings.bind("splash", "splash");
+        this.settings.bind("fog", "fog", () => this._fogUpdate());
+        this.settings.bind("fog-intensity", "fogIntensity");
+        this.settings.bind("fog-fps", "fogFps");
 
         this.isRdp = !!GLib.getenv("XRDP_SESSION");
         this.layer = new Clutter.Actor({ reactive: false, clip_to_allocation: true, visible: false });
@@ -88,8 +91,9 @@ class Weather {
         this._mapId = global.window_manager.connect("map", (wm, a) => {
             if (a.meta_window.get_window_type() === Meta.WindowType.DOCK) this._dockChanged();
         });
-        this._monitorsId = Main.layoutManager.connect("monitors-changed", () => this._resize());
+        this._monitorsId = Main.layoutManager.connect("monitors-changed", () => { this._resize(); this._fogRebuild(); });
         this._resize();
+        this._fogInit();
         this._bindKey();
         this._schedule(rand(30, 90));
     }
@@ -107,6 +111,7 @@ class Weather {
     _onActive() {
         if (this.active) { if (!this.event) this._schedule(rand(20, 60)); }
         else this.stop();
+        this._fogUpdate();
     }
 
     // ------------------------------------------------------------ Ebene
@@ -125,8 +130,135 @@ class Weather {
         this._later = Meta.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
             this._later = 0;
             this._restack();
+            this._fogRestack();
             return false;
         });
+    }
+
+    // ------------------------------------------------------------ Nebelschwaden
+    // Dauerhaft, zart, über Hintergrund, Desktop-Symbolen und Desklets, unter allen Fenstern.
+    // Sparsam: 4 Schwaden werden einmal in Drittel-Auflösung gezeichnet und hochskaliert
+    // (weich, wenig Speicher); danach ändern sich nur Lage, Höhe und Deckkraft – mit
+    // eigener, niedriger Bildrate. Ist der Desktop verdeckt (maximiertes Fenster), steht alles.
+    _fogInit() {
+        this.fogLayer = new Clutter.Actor({ reactive: false, clip_to_allocation: true, visible: false });
+        global.window_group.add_child(this.fogLayer);
+        this.fogParts = [];
+        this.fogTimer = 0;
+        this.fogCheck = 0;
+        this.fogLevel = 0;
+        this._fogRebuild();
+        this._fogUpdate();
+    }
+
+    _fogRebuild() {
+        if (!this.fogLayer) return;
+        for (let f of this.fogParts) f.actor.destroy();
+        this.fogParts = [];
+        let W = this.W, H = this.H, SC = 3, n = 4;
+        this.fogLayer.set_position(0, 0);
+        this.fogLayer.set_size(W, H);
+        for (let i = 0; i < n; i++) {
+            let w = Math.round(W * rand(0.9, 1.3) / SC), h = Math.round(H * rand(0.3, 0.45) / SC);
+            let seed = Math.random() * 1e9;
+            let a = new St.DrawingArea({ reactive: false, width: w, height: h });
+            a.connect("repaint", area => this._drawFog(area, seed));
+            a.set_pivot_point(0.5, 0.5);
+            a.set_scale(SC, SC);
+            this.fogLayer.add_child(a);
+            this.fogParts.push({
+                actor: a, w: w * SC, h: h * SC,
+                bx: W / 2 - (w * SC) / 2 + rand(-0.15, 0.15) * W,
+                by: (0.15 + 0.7 * (i + rand(0, 1)) / n) * H - (h * SC) / 2,
+                ax: rand(0.08, 0.18) * W, wx: 2 * Math.PI / rand(150, 300),
+                ay: rand(0.01, 0.04) * H, wy: 2 * Math.PI / rand(60, 140),
+                wo: 2 * Math.PI / rand(40, 100), ws: 2 * Math.PI / rand(30, 70),
+                ph: rand(0, 6.28), a0: rand(0.6, 1),
+            });
+        }
+    }
+
+    _drawFog(area, seed) {
+        let cr = area.get_context(), [w, h] = area.get_surface_size();
+        // kleiner, reproduzierbarer Zufall, damit Neuzeichnen dieselbe Schwade ergibt
+        let r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+        for (let k = 0; k < 45; k++) {
+            // Wolken eher in der Mitte, zu den Enden dünner
+            let u = (r() + r() + r()) / 3;
+            let x = u * w, y = h * (0.5 + (r() - 0.5) * 0.45);
+            let rad = h * (0.25 + r() * 0.35);
+            let g = new Cairo.RadialGradient(x, y, 0, x, y, rad);
+            let al = 0.05 + r() * 0.07;
+            g.addColorStopRGBA(0, 0.88, 0.90, 0.93, al);
+            g.addColorStopRGBA(0.5, 0.86, 0.88, 0.92, al * 0.55);
+            g.addColorStopRGBA(1, 0.85, 0.87, 0.9, 0);
+            cr.setSource(g);
+            cr.arc(x, y, rad, 0, 2 * Math.PI);
+            cr.fill();
+        }
+        cr.$dispose();
+    }
+
+    _fogRestack() {
+        if (!this.fogLayer) return;
+        // direkt unter der Wetterebene: über Hintergrund, Symbolen und Desklets, unter allen Fenstern
+        let wg = global.window_group;
+        if (this.layer.get_parent() === wg) wg.set_child_below_sibling(this.fogLayer, this.layer);
+    }
+
+    _fogCovered() {
+        if (this.isRdp && !this.showInRdp) return true;
+        if (!this.pauseCovered) return false;
+        let ws = global.workspace_manager.get_active_workspace();
+        return ws.list_windows().some(w =>
+            !w.minimized && w.showing_on_its_workspace() && w.get_window_type() === Meta.WindowType.NORMAL &&
+            (w.is_fullscreen() || w.get_maximized() === Meta.MaximizeFlags.BOTH));
+    }
+
+    _fogUpdate() {
+        if (!this.fogLayer) return;
+        let on = this.active && this.fog;
+        if (on && !this.fogCheck)
+            this.fogCheck = GLib.timeout_add_seconds(GLib.PRIORITY_LOW, 2, () => { this._fogUpdate(); return GLib.SOURCE_CONTINUE; });
+        if (!on && this.fogCheck) { GLib.source_remove(this.fogCheck); this.fogCheck = 0; }
+        let run = on && !this._fogCovered();
+        if (run && !this.fogTimer) {
+            this._fogRestack();
+            this.fogLayer.show();
+            this.fogLast = 0;
+            let tl = new Clutter.Timeline({ duration: 1000, repeat_count: -1 });
+            tl.connect("new-frame", () => {
+                let now = GLib.get_monotonic_time();
+                if ((now - this.fogLast) / 1000 < 1000 / Math.max(2, this.fogFps) - 4) return;
+                this.fogLast = now;
+                this._fogStep(now / 1e6);
+            });
+            this.fogTimer = tl;
+            tl.start();
+        } else if (!run && this.fogTimer) {
+            this._fogStopTimer();
+            this.fogLayer.hide();
+        }
+    }
+
+    _fogStopTimer() {
+        let tl = this.fogTimer;
+        this.fogTimer = 0;
+        if (tl) { tl.stop(); tl.run_dispose(); }
+    }
+
+    _fogStep(t) {
+        // Regen verdichtet den Nebel, Sonne lichtet ihn
+        let ev = this.event, boost = 1;
+        if (ev && ev.kinds.rain) boost += 0.4 * Math.min(1, this.shadeLevel / 40);
+        if (this.sunRays) boost -= 0.35 * this.sunLevel;
+        let k = this.fogIntensity / 100 * boost;
+        for (let f of this.fogParts) {
+            let a = f.actor;
+            a.set_position(f.bx + Math.sin(t * f.wx + f.ph) * f.ax, f.by + Math.sin(t * f.wy + f.ph * 1.3) * f.ay);
+            a.opacity = Math.round(255 * Math.min(1, k * f.a0 * (0.55 + 0.45 * Math.sin(t * f.wo + f.ph * 0.7))));
+            a.scale_y = 3 * (1 + 0.08 * Math.sin(t * f.ws + f.ph));
+        }
     }
 
     _resize() {
@@ -200,6 +332,7 @@ class Weather {
             this.checkTimer = GLib.timeout_add_seconds(GLib.PRIORITY_LOW, 1, () => {
                 this._checkCovered();
                 this._restack();
+                this._fogRestack();
                 return GLib.SOURCE_CONTINUE;
             });
         this.paused = false;
@@ -762,6 +895,9 @@ class Weather {
         if (this.checkTimer) GLib.source_remove(this.checkTimer);
         if (this.schedId) GLib.source_remove(this.schedId);
         if (this._later) Meta.later_remove(this._later);
+        this._fogStopTimer();
+        if (this.fogCheck) GLib.source_remove(this.fogCheck);
+        if (this.fogLayer) this.fogLayer.destroy();
         Main.keybindingManager.removeHotKey(UUID + "-toggle");
         global.display.disconnect(this._restackId);
         global.window_manager.disconnect(this._mapId);

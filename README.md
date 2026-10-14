@@ -40,7 +40,7 @@ abgefragt, sofern das System (polkit) nicht ohnehin ohne Passwort freigibt.
 Bausteine: Schrift JetBrains Mono, Cinnamon-Theme „Nebel“, Hintergrundbild,
 Tag/Nacht-Hintergrund, Darstellung (Mint-L-Grey, Bibata), Leiste, Desklets
 (Systeminfo und Systemlast), Sitzungsmenü, Dock Plank, Mint-Menü → Dock, Wetter auf dem Desktop (Regen,
-Blätter, Schnee, Sonnenstrahlen im Nebel – abschaltbar mit Super+Alt+W), Sperrbildschirm,
+Blätter, Schnee, Sonnenstrahlen und wabernde Nebelschwaden – abschaltbar mit Super+Alt+W), Sperrbildschirm,
 Terminal-Profil, Programm „Nebel-Einstellungen“ und Anmeldebildschirm.
 
 Im selben Programm **Nebel-Einstellungen** (Mint-Menü → Einstellungen) lassen sich

@@ -8,6 +8,8 @@
     "leaves": { "type": "switch", "default": true, "description": "Blätter im Wind" },
     "snow": { "type": "switch", "default": true, "description": "Schneefall" },
     "sun": { "type": "switch", "default": true, "description": "Sonnenstrahlen im Nebel", "tooltip": "Nur tagsüber (8–18 Uhr), unabhängig von der Jahreszeit" },
+    "fog": { "type": "switch", "default": true, "description": "Wabernde Nebelschwaden",
+             "tooltip": "Dauerhaft, langsam ziehende Nebelschwaden über dem Desktop (unter allen Fenstern). Sparsam: niedrige eigene Bildrate, steht still, wenn ein Fenster maximiert ist." },
     "seasonal": { "type": "switch", "default": true, "description": "Nach Jahreszeit",
                   "tooltip": "Blätter von September bis November, Schnee von Dezember bis Februar, Regen von März bis November." },
 
@@ -21,6 +23,9 @@
     "intensity": { "type": "scale", "default": 100, "min": 25, "max": 300, "step": 25, "description": "Stärke (%)" },
     "size": { "type": "scale", "default": 100, "min": 50, "max": 250, "step": 10, "description": "Größe (%)" },
     "wind": { "type": "scale", "default": 40, "min": -100, "max": 100, "step": 10, "description": "Wind (links ← → rechts)" },
+    "fog-intensity": { "type": "scale", "default": 60, "min": 10, "max": 150, "step": 10, "description": "Nebelschwaden: Dichte (%)", "dependency": "fog" },
+    "fog-fps": { "type": "spinbutton", "default": 10, "min": 2, "max": 30, "step": 1, "units": "Bilder/s", "description": "Nebelschwaden: Bildrate", "dependency": "fog",
+                 "tooltip": "Die Schwaden ziehen sehr langsam – wenige Bilder pro Sekunde reichen und sparen Rechenzeit." },
     "fps": { "type": "spinbutton", "default": 30, "min": 10, "max": 60, "step": 5, "units": "Bilder/s", "description": "Bildrate" },
 
     "h-test": { "type": "header", "description": "Jetzt auslösen" },
