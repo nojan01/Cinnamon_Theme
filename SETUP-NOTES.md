@@ -598,8 +598,11 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   anderen Seite wieder herein (Ränder der Textur sind weich). Gemessen (xrdp, 10 Bilder/s): cinnamon ca. 12,0 % → 13,9 % eines Kerns.
 - Schnee auf dem Dock (Schalter „Schnee bleibt auf dem Dock liegen“, Standard an): Flocken, die
   auf die sichtbare Plank-Leiste treffen (gleiche Erkennung wie bei den Regenspritzern), bauen ein
-  Höhenprofil in 2-px-Spalten auf (max. 9 px, an den runden Enden weniger; zu steile Stufen
-  rutschen ab). Eine `St.DrawingArea`, höchstens 4× pro Sekunde neu gezeichnet; gezeichnet werden
+  Höhenprofil in 2-px-Spalten auf (max. 9 px; zu steile Stufen rutschen ab). An den runden
+  Enden folgt die Decke der Rundung: Radius aus dem Plank-Theme (`TopRoundness` × 0,85, gemessen
+  bei Nebel-Grau: 30 → ca. 25 px); Schnee bleibt nur, wo die Kante höchstens 3 px abfällt.
+  Lage/Höhe/Breite der Leiste werden wie beim Regen alle 2 s und bei Dock-Änderungen neu gelesen,
+  auch während des Tauens – die Decke wandert mit. Eine `St.DrawingArea`, höchstens 4× pro Sekunde neu gezeichnet; gezeichnet werden
   nur Abschnitte mit Schnee (erste Fassung zog über die ganze Leiste einen Strich). Liegt, solange
   das Schnee-Ereignis läuft; danach taut die Decke in einigen Sekunden ab.
 - Einstellungen überstehen Updates (1.0.20): Cinnamon übernimmt bei geändertem

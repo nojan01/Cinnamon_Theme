@@ -16,6 +16,7 @@ const UUID = "weather@cinnamon-theme";
 const SPLASH_MAX = 220;
 const CAP_BIN = 2;         // Spaltenbreite der Schneedecke (px)
 const CAP_MAX = 9;         // größte Höhe der Schneedecke (px)
+const CAP_SLOPE = 3;       // auf der Eckenrundung liegt Schnee nur bis zu dieser Absenkung (px)
 const LEAF_COLORS = [
     [0.82, 0.45, 0.14], [0.74, 0.27, 0.12], [0.88, 0.64, 0.20],
     [0.58, 0.35, 0.16], [0.64, 0.56, 0.22], [0.78, 0.36, 0.10],
@@ -569,18 +570,39 @@ class Weather {
         }
         if (c.x1 !== d.x1 || c.y !== d.y || c.n !== n) {
             c.x1 = d.x1; c.y = d.y; c.n = n;
-            c.actor.set_size(n * CAP_BIN, CAP_MAX + 3);
+            // abgerundete Enden der Leiste: wie tief die Oberkante je Spalte abfällt
+            let R = this._dockRadius();
+            c.drop = new Float32Array(n);
+            for (let i = 0; i < n; i++) {
+                let x = Math.min(i, n - 1 - i) * CAP_BIN + CAP_BIN / 2;
+                c.drop[i] = x >= R ? 0 : R - Math.sqrt(R * R - (R - x) * (R - x));
+            }
+            c.actor.set_size(n * CAP_BIN, CAP_MAX + CAP_SLOPE + 3);
             c.actor.set_position(d.x1, d.y - CAP_MAX - 1);
             c.dirty = true;
         }
         return c;
     }
 
+    // Eckenradius der Plank-Leiste aus dem Theme (TopRoundness); gemessen ≈ 0,85 × Wert
+    _dockRadius() {
+        let name = "Default";
+        try { if (this.plankSettings) name = this.plankSettings.get_string("theme"); } catch (e) {}
+        for (let dir of [GLib.get_user_data_dir() + "/plank/themes", "/usr/share/plank/themes"]) {
+            try {
+                let [ok, bytes] = GLib.file_get_contents(dir + "/" + name + "/dock.theme");
+                let m = new TextDecoder().decode(bytes).match(/^TopRoundness=([\d.]+)/m);
+                if (ok && m) return Math.max(0, Number(m[1]) * 0.85);
+            } catch (e) {}
+        }
+        return 20;
+    }
+
     _capHeight(x) {
         let c = this.cap;
         if (!c || c.x1 === undefined) return 0;
         let i = Math.floor((x - c.x1) / CAP_BIN);
-        return i >= 0 && i < c.h.length ? c.h[i] : 0;
+        return i >= 0 && i < c.h.length ? c.h[i] - c.drop[i] : 0;
     }
 
     _capAdd(x, size) {
@@ -591,8 +613,8 @@ class Weather {
         for (let j = -3; j <= 3; j++) {
             let i = i0 + j;
             if (i < 0 || i >= c.h.length) continue;
-            // an den abgerundeten Enden der Leiste bleibt weniger liegen
-            let edge = smooth(Math.min(i, c.h.length - 1 - i) * CAP_BIN / 14);
+            // auf der Rundung bleibt nur dort etwas liegen, wo sie noch fast waagerecht ist
+            let edge = smooth((CAP_SLOPE - c.drop[i]) / CAP_SLOPE);
             c.h[i] = Math.min(CAP_MAX * edge, c.h[i] + amt * Math.exp(-j * j / 4));
         }
         c.dirty = true;
@@ -600,7 +622,7 @@ class Weather {
 
     _capStep(dt, snowing, now) {
         let c = this.cap;
-        if (snowing) this._capEnsure();
+        if (this.dock) this._capEnsure();     // Leiste verschoben/höher/breiter: Decke wandert mit
         if (!snowing) {
             // Tauen: Höhe nimmt ab, zum Schluss ausblenden
             let any = false;
@@ -630,7 +652,7 @@ class Weather {
         let c = this.cap, cr = area.get_context(), [w, hh] = area.get_surface_size();
         if (c) {
             // nur Abschnitte zeichnen, auf denen wirklich Schnee liegt (sonst entsteht ein Strich)
-            let base = hh - 2, h = c.h, n = h.length, MIN = 0.6;
+            let base = CAP_MAX + 1, h = c.h, n = h.length, MIN = 0.6;   // Grundlinie = Oberkante der Leiste
             let g = new Cairo.LinearGradient(0, base - CAP_MAX, 0, base + 1);
             g.addColorStopRGBA(0, 1, 1, 1, 0.97);
             g.addColorStopRGBA(1, 0.88, 0.91, 0.96, 0.95);
@@ -639,9 +661,10 @@ class Weather {
                 let j = i;
                 while (j + 1 < n && h[j + 1] >= MIN) j++;
                 let x0 = i * CAP_BIN, x1 = (j + 1) * CAP_BIN;
-                cr.moveTo(x0, base + 1);
-                for (let k = i; k <= j; k++) cr.lineTo(k * CAP_BIN + CAP_BIN / 2, base + 1 - (h[k] - MIN));
-                cr.lineTo(x1, base + 1);
+                let dr = c.drop;
+                cr.moveTo(x0, base + 1 + dr[i]);
+                for (let k = i; k <= j; k++) cr.lineTo(k * CAP_BIN + CAP_BIN / 2, base + 1 + dr[k] - (h[k] - MIN));
+                cr.lineTo(x1, base + 1 + dr[j]);
                 cr.closePath();
                 i = j;
             }
@@ -1032,7 +1055,7 @@ class Weather {
         let rainRot = -Math.atan2(windPx * 0.7, 1000) * 180 / Math.PI;
         let tilt = Math.sin(rainRot * Math.PI / 180);
         let capOn = this.snowCap && ev && ev.kinds.snow;
-        if (now - this.dockCheck > 2e6 && ev && ((this.splash && ev.kinds.rain) || capOn)) this._updateDock();
+        if (now - this.dockCheck > 2e6 && ((ev && this.splash && ev.kinds.rain) || capOn || this.cap)) this._updateDock();
         let dock = this.splash ? this.dock : null;
         let capDock = capOn ? this.dock : null;
         for (let i = this.parts.length - 1; i >= 0; i--) {
