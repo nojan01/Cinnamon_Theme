@@ -14,6 +14,8 @@ const Cairo = imports.cairo;
 
 const UUID = "weather@cinnamon-theme";
 const SPLASH_MAX = 220;
+const CAP_BIN = 2;         // Spaltenbreite der Schneedecke (px)
+const CAP_MAX = 9;         // größte Höhe der Schneedecke (px)
 const LEAF_COLORS = [
     [0.82, 0.45, 0.14], [0.74, 0.27, 0.12], [0.88, 0.64, 0.20],
     [0.58, 0.35, 0.16], [0.64, 0.56, 0.22], [0.78, 0.36, 0.10],
@@ -53,6 +55,7 @@ class Weather {
         this.settings.bind("pause-covered", "pauseCovered", () => this._checkCovered());
         this.settings.bind("show-in-rdp", "showInRdp", () => this._checkCovered());
         this.settings.bind("splash", "splash");
+        this.settings.bind("snowcap", "snowCap", () => { if (!this.snowCap) this._capDrop(); });
         this.settings.bind("fog", "fog", () => this._fogUpdate());
         this.settings.bind("fog-intensity", "fogIntensity");
         this.settings.bind("fog-fps", "fogFps");
@@ -69,6 +72,7 @@ class Weather {
         this.dock = null;          // sichtbare Plank-Leiste {x1, x2, y}
         this.dockCheck = 0;
         this.splashCount = 0;
+        this.cap = null;           // Schneedecke auf dem Dock
         this.acc = { rain: 0, leaf: 0, snow: 0, sun: 0 };
         this.sunRays = null;       // Lichtkegel {sx, sy, beams[]}
         this.sunLevel = 0;
@@ -491,7 +495,7 @@ class Weather {
         this.dockCheck = GLib.get_monotonic_time();
         let win = global.get_window_actors().map(a => a.meta_window)
             .find(w => w.get_window_type() === Meta.WindowType.DOCK && /plank/i.test(w.get_wm_class() || ""));
-        if (!win || !this.splash) { this.dock = null; return; }
+        if (!win || (!this.splash && !this.snowCap)) { this.dock = null; return; }
         let r = win.get_buffer_rect();
         try {
             let proc = Gio.Subprocess.new(["python3", extDir + "/dockshape.py", win.get_description()],
@@ -545,6 +549,114 @@ class Weather {
         }
     }
 
+    // ------------------------------------------------------------ Schnee auf dem Dock
+    // Höhenprofil in 2-px-Spalten über der sichtbaren Plank-Leiste; eine Zeichenfläche,
+    // höchstens 4× pro Sekunde neu gezeichnet. Liegt, solange es schneit, schmilzt danach.
+    _capEnsure() {
+        let d = this.dock;
+        if (!d) return null;
+        let c = this.cap, n = Math.max(2, Math.ceil((d.x2 - d.x1) / CAP_BIN));
+        if (!c) {
+            let a = new St.DrawingArea({ reactive: false });
+            a.connect("repaint", area => this._capDraw(area));
+            this.layer.add_child(a);
+            c = this.cap = { actor: a, h: new Float32Array(n), dirty: true, drawn: 0, alpha: 1 };
+        } else if (c.h.length !== n) {
+            // Leiste breiter/schmaler geworden: Profil umrechnen
+            let o = c.h, h = new Float32Array(n);
+            for (let i = 0; i < n; i++) h[i] = o[Math.min(o.length - 1, Math.floor(i * o.length / n))];
+            c.h = h; c.dirty = true;
+        }
+        if (c.x1 !== d.x1 || c.y !== d.y || c.n !== n) {
+            c.x1 = d.x1; c.y = d.y; c.n = n;
+            c.actor.set_size(n * CAP_BIN, CAP_MAX + 3);
+            c.actor.set_position(d.x1, d.y - CAP_MAX - 1);
+            c.dirty = true;
+        }
+        return c;
+    }
+
+    _capHeight(x) {
+        let c = this.cap;
+        if (!c || c.x1 === undefined) return 0;
+        let i = Math.floor((x - c.x1) / CAP_BIN);
+        return i >= 0 && i < c.h.length ? c.h[i] : 0;
+    }
+
+    _capAdd(x, size) {
+        let c = this._capEnsure();
+        if (!c) return;
+        c.alpha = 1;
+        let i0 = Math.floor((x - c.x1) / CAP_BIN), amt = size * 0.6;
+        for (let j = -3; j <= 3; j++) {
+            let i = i0 + j;
+            if (i < 0 || i >= c.h.length) continue;
+            // an den abgerundeten Enden der Leiste bleibt weniger liegen
+            let edge = smooth(Math.min(i, c.h.length - 1 - i) * CAP_BIN / 14);
+            c.h[i] = Math.min(CAP_MAX * edge, c.h[i] + amt * Math.exp(-j * j / 4));
+        }
+        c.dirty = true;
+    }
+
+    _capStep(dt, snowing, now) {
+        let c = this.cap;
+        if (snowing) this._capEnsure();
+        if (!snowing) {
+            // Tauen: Höhe nimmt ab, zum Schluss ausblenden
+            let any = false;
+            for (let i = 0; i < c.h.length; i++) {
+                c.h[i] = Math.max(0, c.h[i] - dt * (0.25 + c.h[i] * 0.12));
+                if (c.h[i] > 0.3) any = true;
+            }
+            c.alpha = any ? 1 : Math.max(0, c.alpha - dt);
+            c.dirty = true;
+            if (!any && c.alpha <= 0) { this._capDrop(); return; }
+        }
+        if (c.dirty && now - c.drawn > 250000) {
+            // Schnee rutscht: zu steile Stufen ausgleichen
+            let h = c.h;
+            for (let i = 1; i < h.length; i++) {
+                let d = h[i] - h[i - 1];
+                if (Math.abs(d) > 1.2) { let m = (Math.abs(d) - 1.2) / 2 * Math.sign(d); h[i] -= m; h[i - 1] += m; }
+            }
+            c.actor.opacity = Math.round(255 * c.alpha);
+            c.actor.queue_repaint();
+            c.dirty = false;
+            c.drawn = now;
+        }
+    }
+
+    _capDraw(area) {
+        let c = this.cap, cr = area.get_context(), [w, hh] = area.get_surface_size();
+        if (c) {
+            // nur Abschnitte zeichnen, auf denen wirklich Schnee liegt (sonst entsteht ein Strich)
+            let base = hh - 2, h = c.h, n = h.length, MIN = 0.6;
+            let g = new Cairo.LinearGradient(0, base - CAP_MAX, 0, base + 1);
+            g.addColorStopRGBA(0, 1, 1, 1, 0.97);
+            g.addColorStopRGBA(1, 0.88, 0.91, 0.96, 0.95);
+            for (let i = 0; i < n; i++) {
+                if (h[i] < MIN) continue;
+                let j = i;
+                while (j + 1 < n && h[j + 1] >= MIN) j++;
+                let x0 = i * CAP_BIN, x1 = (j + 1) * CAP_BIN;
+                cr.moveTo(x0, base + 1);
+                for (let k = i; k <= j; k++) cr.lineTo(k * CAP_BIN + CAP_BIN / 2, base + 1 - (h[k] - MIN));
+                cr.lineTo(x1, base + 1);
+                cr.closePath();
+                i = j;
+            }
+            cr.setSource(g);
+            cr.fill();
+        }
+        cr.$dispose();
+    }
+
+    _capDrop() {
+        if (!this.cap) return;
+        this.cap.actor.destroy();
+        this.cap = null;
+    }
+
     _run() {
         this._updateDock();
         this._restack();
@@ -560,6 +672,7 @@ class Weather {
         this.shade.opacity = 0;
         this.shadeLevel = 0;
         this._dropSun();
+        this._capDrop();
         this.event = null;
         for (let k in this.pool) {
             for (let p of this.pool[k]) p.actor.destroy();
@@ -918,8 +1031,10 @@ class Weather {
         let W = this.W, H = this.H;
         let rainRot = -Math.atan2(windPx * 0.7, 1000) * 180 / Math.PI;
         let tilt = Math.sin(rainRot * Math.PI / 180);
-        if (this.splash && now - this.dockCheck > 2e6 && ev && ev.kinds.rain) this._updateDock();
+        let capOn = this.snowCap && ev && ev.kinds.snow;
+        if (now - this.dockCheck > 2e6 && ev && ((this.splash && ev.kinds.rain) || capOn)) this._updateDock();
         let dock = this.splash ? this.dock : null;
+        let capDock = capOn ? this.dock : null;
         for (let i = this.parts.length - 1; i >= 0; i--) {
             let p = this.parts[i], a = p.actor;
             if (p.kind === "rain") {
@@ -961,6 +1076,15 @@ class Weather {
                 p.x += windPx * 0.25 * p.drift * dt;
                 if (p.y > H + 10) { this._free(i); continue; }
                 let x = p.x + Math.sin(t * p.freq + p.ph) * p.amp;
+                if (capDock) {
+                    let sz = a.width, cx = x + sz / 2, bottom = p.y + sz;
+                    if (bottom >= capDock.y - this._capHeight(cx) && bottom - p.vy * dt < capDock.y + 2 &&
+                        cx >= capDock.x1 && cx <= capDock.x2) {
+                        this._capAdd(cx, sz);
+                        this._free(i);
+                        continue;
+                    }
+                }
                 a.set_position(x, p.y);  // Bruchteile: langsame Teilchen gleiten statt zu springen
             } else {
                 p.t += dt;
@@ -977,7 +1101,9 @@ class Weather {
             }
         }
 
-        if (!ev && !this.parts.length && this.shadeLevel < 0.5 && !this.sunRays) this._idle();
+        if (this.cap) this._capStep(dt, capOn, now);
+
+        if (!ev && !this.parts.length && this.shadeLevel < 0.5 && !this.sunRays && !this.cap) this._idle();
     }
 
     destroy() {
@@ -997,6 +1123,7 @@ class Weather {
         if (this._keepId) this.settings.disconnect(this._keepId);
         this.settings.finalize();
         this._dropSun();
+        this._capDrop();
         this.layer.destroy();
     }
 }

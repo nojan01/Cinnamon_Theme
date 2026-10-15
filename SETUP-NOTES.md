@@ -596,6 +596,12 @@ Das Mint-Menü kann Programme nicht per Ziehen an externe Fenster wie Plank
   Bewegung mit bloßem Auge nicht zu sehen; bei Wind 0 Richtung des letzten Ereignisses;
   Richtungswechsel über ca. 20 s überblendet). Verlassen sie den Bildschirm, kommen sie auf der
   anderen Seite wieder herein (Ränder der Textur sind weich). Gemessen (xrdp, 10 Bilder/s): cinnamon ca. 12,0 % → 13,9 % eines Kerns.
+- Schnee auf dem Dock (Schalter „Schnee bleibt auf dem Dock liegen“, Standard an): Flocken, die
+  auf die sichtbare Plank-Leiste treffen (gleiche Erkennung wie bei den Regenspritzern), bauen ein
+  Höhenprofil in 2-px-Spalten auf (max. 9 px, an den runden Enden weniger; zu steile Stufen
+  rutschen ab). Eine `St.DrawingArea`, höchstens 4× pro Sekunde neu gezeichnet; gezeichnet werden
+  nur Abschnitte mit Schnee (erste Fassung zog über die ganze Leiste einen Strich). Liegt, solange
+  das Schnee-Ereignis läuft; danach taut die Decke in einigen Sekunden ab.
 - Einstellungen überstehen Updates (1.0.20): Cinnamon übernimmt bei geändertem
   settings-schema.json Zahlenwerte nur, wenn sie strikt zwischen min und max liegen
   (`_checkSanity`: `val < max && val > min`) – ein Regler am Rand (z. B. Pause 1 min) fiel bei

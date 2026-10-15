@@ -7,6 +7,8 @@
                 "tooltip": "Regentropfen, die auf die Plank-Leiste treffen, zerspringen in kleine Spritzer." },
     "leaves": { "type": "switch", "default": true, "description": "Blätter im Wind" },
     "snow": { "type": "switch", "default": true, "description": "Schneefall" },
+    "snowcap": { "type": "switch", "default": true, "description": "Schnee bleibt auf dem Dock liegen", "dependency": "snow",
+                 "tooltip": "Flocken, die auf die Plank-Leiste fallen, bleiben liegen, solange es schneit, und schmelzen danach langsam." },
     "sun": { "type": "switch", "default": true, "description": "Sonnenstrahlen im Nebel", "tooltip": "Nur tagsüber (8–18 Uhr), unabhängig von der Jahreszeit" },
     "fog": { "type": "switch", "default": true, "description": "Wabernde Nebelschwaden",
              "tooltip": "Dauerhaft, langsam ziehende Nebelschwaden über dem Desktop (unter allen Fenstern). Sparsam: niedrige eigene Bildrate, steht still, wenn ein Fenster maximiert ist." },
