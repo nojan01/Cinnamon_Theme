@@ -347,6 +347,13 @@ do_wecker() {
   fc-cache -f "$HOME/.local/share/fonts" >/dev/null 2>&1
   put "$REPO/desklets/weckpilot@cinnamon-theme" "$HOME/.local/share/cinnamon/desklets/weckpilot@cinnamon-theme"
   enable_desklets "weckpilot@cinnamon-theme:40:60"
+  # WeckPilot beim Anmelden ausgeblendet starten – das Desklet zeigt alles, geweckt wird trotzdem
+  local auto="$HOME/.config/autostart/weckpilot.desktop"
+  remember_path "$auto"; mkdir -p "$(dirname "$auto")"
+  printf '[Desktop Entry]\nType=Application\nName=WeckPilot\nComment=Wecker im Hintergrund (Anzeige im Desklet)\nExec=weckpilot --hidden\nIcon=weckpilot\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Delay=5\nNoDisplay=false\n' > "$auto"
+  if command -v weckpilot >/dev/null && ! pgrep -u "$USER" -x weckpilot >/dev/null; then
+    setsid weckpilot --hidden >/dev/null 2>&1 < /dev/null &
+  fi
   NEED_RESTART=1
 }
 

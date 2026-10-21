@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
 // Uhr mit Leuchtziffern und nächster Wecker aus WeckPilot (github.com/nojan01/WeckPilot-Linux).
-// Geweckt wird von der App selbst; das Desklet zeigt nur an und startet sie per Klick.
+// Geweckt wird von der App selbst (läuft meist ausgeblendet mit --hidden);
+// das Desklet zeigt nur an und holt sie per Klick nach vorn.
 const St = imports.gi.St;
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
@@ -14,6 +15,8 @@ const Util = imports.misc.util;
 const APP_BIN = "weckpilot";
 const STATUS_FILE = GLib.build_filenamev([GLib.get_user_config_dir(), "weckpilot", "next-alarm.json"]);
 const WINDOW_CHECK_MS = 3000;
+// WeckPilot belegt diesen Namen auf dem Sitzungsbus, auch mit ausgeblendetem Fenster
+const APP_BUS_NAME = "de.little-tools.weckpilot.linux.SingleInstance";
 
 // Sprache gemeinsam für alle Nebel-Desklets (Datei, Rechtsklick „Switch to English“)
 const LANG_FILE = GLib.build_filenamev([GLib.get_user_config_dir(), "cinnamon-theme", "desklet-language"]);
@@ -92,6 +95,17 @@ function readNextAlarm() {
     }
 }
 
+function appRunning() {
+    try {
+        let r = Gio.DBus.session.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus",
+            "org.freedesktop.DBus", "NameHasOwner", new GLib.Variant("(s)", [APP_BUS_NAME]),
+            null, Gio.DBusCallFlags.NONE, 500, null);
+        return r.deep_unpack()[0];
+    } catch (e) {
+        return findAppWindow() !== null;
+    }
+}
+
 function findAppWindow() {
     for (let actor of global.get_window_actors()) {
         let win = actor.get_meta_window();
@@ -154,6 +168,7 @@ class WeckPilotDesklet extends Desklet.Desklet {
         this._openApp();
     }
 
+    // Ein zweiter Start holt das (auch ausgeblendete) Fenster der laufenden App nach vorn
     _openApp() {
         let win = findAppWindow();
         if (win) {
@@ -178,7 +193,7 @@ class WeckPilotDesklet extends Desklet.Desklet {
     }
 
     _checkApp(force) {
-        let running = findAppWindow() !== null;
+        let running = appRunning();
         if (!force && running === this._appRunning) return;
         this._appRunning = running;
         let t = T[this.lang];

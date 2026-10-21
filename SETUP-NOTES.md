@@ -173,8 +173,15 @@ gsettings set org.cinnamon next-desklet-id 7
   Die Schrift liegt in `fonts/Orbitron/` und wird nach `~/.local/share/fonts/` kopiert.
 - Den nächsten Wecker schreibt WeckPilot (ab 1.0.3) nach
   `~/.config/weckpilot/next-alarm.json`; das Desklet beobachtet die Datei.
-- Geweckt wird von der App, nicht vom Desklet. Läuft WeckPilot nicht, zeigt das Desklet
-  einen Hinweis; ein Klick startet die App bzw. holt ihr Fenster nach vorn.
+- Geweckt wird von der App, nicht vom Desklet. Der Baustein legt
+  `~/.config/autostart/weckpilot.desktop` mit `weckpilot --hidden` an (ab WeckPilot 1.0.4):
+  Die App läuft unsichtbar im Hintergrund, ihr Fenster erscheint nur beim Klingeln und
+  verschwindet nach „Aus“/„Schlummern“ wieder. Läuft sie noch nicht, startet der Baustein
+  sie gleich mit.
+- Das Desklet erkennt die App über den D-Bus-Namen
+  `de.little-tools.weckpilot.linux.SingleInstance`. Läuft sie nicht, zeigt es einen
+  Hinweis. Ein Klick startet `weckpilot`; läuft die App schon, holt das ihr Fenster nach
+  vorn. Dort blendet der Knopf ⌄ es wieder aus.
 - Einstellungen (Größe, Sekunden, Datum, Deckkraft) per Rechtsklick oder in
   Nebel-Einstellungen → Desklets; die Sprache folgt 4c.
 
