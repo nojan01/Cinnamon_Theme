@@ -88,6 +88,8 @@ Stattdessen eigenes Cinnamon-Desklet `desklets/fastfetch@cinnamon-theme/`
 - Oben Uhrzeit (40 pt, JetBrains Mono Light), darunter Datum in Mint-Grün
   („Samstag, 10. Oktober 2026“), dann `fastfetch --logo none --pipe --structure …`.
   Schlüssel grün (`#8fc46b`), Werte hellgrau; Aktualisierung alle 60 s.
+- Uhrzeit und Datum lassen sich einzeln abschalten (Einstellungen „Uhrzeit anzeigen“ und
+  „Datum anzeigen“), etwa wenn das Wecker-Desklet (4e) sie schon zeigt.
 - fastfetch läuft über `bash -c '…; :'`, sonst meldet es „Shell: cinnamon“.
 - Standardmodule ohne Terminal/Terminal Font (wäre im Desklet „cinnamon“).
 - Hintergrund `rgba(30,30,30,0.30)`, Rand hellgrau, Radius 14 px; Deckkraft per Regler.
@@ -184,6 +186,8 @@ gsettings set org.cinnamon next-desklet-id 7
   vorn. Dort blendet der Knopf ⌄ es wieder aus.
 - Einstellungen (Größe, Sekunden, Datum, Deckkraft) per Rechtsklick oder in
   Nebel-Einstellungen → Desklets; die Sprache folgt 4c.
+- Damit Uhrzeit und Datum nicht doppelt erscheinen, kann man sie im fastfetch-Desklet
+  abschalten (Rechtsklick → Einstellungen → „Uhrzeit anzeigen“ bzw. „Datum anzeigen“).
 
 ## 5. Dock: Plank Reloaded
 

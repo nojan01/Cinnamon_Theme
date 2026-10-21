@@ -106,6 +106,8 @@ class FastfetchDesklet extends Desklet.Desklet {
         this.settings.bind("clock-size", "clockSize", () => this._applyStyle());
         this.settings.bind("opacity", "opacity", () => this._applyStyle());
         this.settings.bind("show-seconds", "showSeconds", () => this._tick());
+        this.settings.bind("show-clock", "showClock", () => this._applyVisibility());
+        this.settings.bind("show-date", "showDate", () => this._applyVisibility());
         this.settings.bind("refresh-interval", "refreshInterval", () => this._scheduleFetch(0));
         this.settings.bind("modules", "modules", () => this._scheduleFetch(0));
 
@@ -121,6 +123,13 @@ class FastfetchDesklet extends Desklet.Desklet {
         setupLanguage(this, () => { this._tick(); this._render(); });
         this._info.set_text(T[this.lang].loading);
         this._applyStyle();
+        this._applyVisibility();
+    }
+
+    _applyVisibility() {
+        this._clock.visible = this.showClock;
+        this._date.visible = this.showDate;
+        this._rule.visible = this.showClock || this.showDate;
     }
 
     on_desklet_added_to_desktop() {

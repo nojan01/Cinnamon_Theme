@@ -12,6 +12,17 @@
         "units": "pt",
         "description": "Schriftgröße der Systeminfo"
     },
+    "show-clock": {
+        "type": "switch",
+        "default": true,
+        "description": "Uhrzeit anzeigen",
+        "tooltip": "Ausschalten, wenn das Wecker-Desklet die Uhrzeit schon zeigt"
+    },
+    "show-date": {
+        "type": "switch",
+        "default": true,
+        "description": "Datum anzeigen"
+    },
     "clock-size": {
         "type": "spinbutton",
         "default": 40,
@@ -19,12 +30,14 @@
         "max": 96,
         "step": 2,
         "units": "pt",
-        "description": "Schriftgröße der Uhrzeit"
+        "description": "Schriftgröße der Uhrzeit",
+        "dependency": "show-clock"
     },
     "show-seconds": {
         "type": "switch",
         "default": false,
-        "description": "Sekunden anzeigen"
+        "description": "Sekunden anzeigen",
+        "dependency": "show-clock"
     },
     "opacity": {
         "type": "scale",
