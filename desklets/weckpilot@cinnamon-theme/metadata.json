@@ -1,0 +1,8 @@
+{
+    "uuid": "weckpilot@cinnamon-theme",
+    "name": "WeckPilot-Wecker",
+    "description": "Uhrzeit mit Leuchtziffern und der nächste Wecker aus WeckPilot",
+    "icon": "alarm-clock",
+    "prevent-decorations": true,
+    "max-instances": "1"
+}

@@ -18,6 +18,11 @@ Copyright: 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains
 License: OFL-1.1
  Siehe /usr/share/cinnamon-theme-nebel/fonts/JetBrainsMono/OFL.txt.
 
+Files: fonts/Orbitron/*
+Copyright: 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron)
+License: OFL-1.1
+ Siehe /usr/share/cinnamon-theme-nebel/fonts/Orbitron/OFL.txt.
+
 License: MIT
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal

@@ -79,6 +79,7 @@ EN = {
     "Wie System": "Like system",
     "Systeminfo": "System info",
     "Systemlast": "System load",
+    "Wecker": "Alarm clock",
     "Alle Optionen …": "All options …",
     "Nicht installiert oder nicht aktiviert.": "Not installed or not enabled.",
     "Ändern über „Alle Optionen …“": "change via “All options …”",
@@ -824,7 +825,8 @@ def page_desklets():
     w.connect("changed", changed)
     p.row(_("Sprache der Desklets"), w)
 
-    for uuid, title in (("fastfetch@cinnamon-theme", _("Systeminfo")), ("sysmon@cinnamon-theme", _("Systemlast"))):
+    for uuid, title in (("fastfetch@cinnamon-theme", _("Systeminfo")), ("sysmon@cinnamon-theme", _("Systemlast")),
+                        ("weckpilot@cinnamon-theme", _("Wecker"))):
         inst = desklet_instance(uuid)
         try:
             xs = XletSettings(uuid, inst, desklet=True) if inst else None

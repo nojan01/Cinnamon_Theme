@@ -1,0 +1,28 @@
+.wp-desklet {
+    font-family: "JetBrains Mono", "Ubuntu Sans Mono", monospace;
+    background-color: rgba(30, 30, 30, 0.30);
+    border: 1px solid rgba(160, 160, 160, 0.35);
+    border-radius: 14px;
+    padding: 14px 22px 16px 22px;
+    color: #d6d6d6;
+    spacing: 4px;
+}
+.wp-clock {
+    font-family: "Orbitron", "JetBrains Mono", monospace;
+    font-weight: bold;
+    color: #a6e48a;
+    text-shadow: 0 0 12px #6fcf4c;
+}
+.wp-date {
+    color: #d6d6d6;
+}
+.wp-alarm {
+    color: #a6e48a;
+    padding-top: 4px;
+}
+.wp-alarm-none {
+    color: #9a9a9a;
+}
+.wp-warning {
+    color: #e6c07a;
+}

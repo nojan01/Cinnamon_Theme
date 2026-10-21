@@ -10,7 +10,7 @@
 #   ./install.sh --list             Bausteine mit Beschreibung und Stand (für Nebel-Einstellungen)
 #
 # Alle vorherigen Werte und überschriebenen Dateien werden in ~/.config/cinnamon-theme/
-# gesichert. Benötigte Pakete (auch fastfetch und Plank Reloaded samt Paketquelle)
+# gesichert. Benötigte Pakete (auch fastfetch, Plank Reloaded samt Paketquelle und WeckPilot)
 # werden automatisch installiert; Root-Schritte laufen über pkexec bzw. sudo.
 set -u
 
@@ -22,7 +22,7 @@ TAB=$'\t'
 VERSION="$(cat "$REPO/VERSION" 2>/dev/null || echo dev)"
 COPYRIGHT="© 2026 Norbert Jander · MIT-Lizenz (Theme „Nebel“: GPL-3.0, basiert auf CBlue)"
 
-COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets session plank dockmenu weather screensaver terminal settings lightdm)
+COMPONENTS=(fonts theme wallpaper daynight appearance panel desklets wecker session plank dockmenu weather screensaver terminal settings lightdm)
 declare -A DESC=(
   [fonts]="Schrift JetBrains Mono"
   [theme]="Cinnamon-Theme „Nebel“"
@@ -31,6 +31,7 @@ declare -A DESC=(
   [appearance]="Mauszeiger, Anwendungen, Symbole (Mint-L-Grey, Bibata)"
   [panel]="Leiste oben, 34 px, Uhrformat"
   [desklets]="Desklets Systeminfo (fastfetch) und Systemlast"
+  [wecker]="Wecker WeckPilot mit Uhr-Desklet (lädt die App von GitHub)"
   [session]="Sitzungsmenü (Herunterfahren, Neustart …)"
   [plank]="Dock Plank mit Theme Nebel-Grau"
   [dockmenu]="Mint-Menü → Dock (Rechtsklick „Zum Dock hinzufügen“, Favoriten)"
@@ -256,15 +257,8 @@ PY
   done
 }
 
-do_desklets() {
-  log "Desklets"
-  local d u
-  for u in fastfetch@cinnamon-theme sysmon@cinnamon-theme; do
-    put "$REPO/desklets/$u" "$HOME/.local/share/cinnamon/desklets/$u"
-  done
-  local w h x id cur new
-  read -r w h <<< "$(screen_size)"; w=${w:-1920}
-  x=$(( w - 453 )); [ $x -lt 20 ] && x=20
+enable_desklets() { # uuid:x:y … – fehlende Desklets an der Position x,y ergänzen
+  local id cur new
   id=$(gsettings get org.cinnamon next-desklet-id | grep -oE '[0-9]+')
   cur=$(gsettings get org.cinnamon enabled-desklets)
   new=$(python3 -c "
@@ -272,11 +266,25 @@ import ast,sys
 # vorhandene Desklets behalten Nummer, Position und Einstellungen; nur fehlende ergänzen
 l=ast.literal_eval(sys.argv[1].replace('@as ',''))
 have={e.split(':')[0] for e in l}
-i=int(sys.argv[2]); x=sys.argv[3]
-for u,y in (('sysmon@cinnamon-theme',60),('fastfetch@cinnamon-theme',375)):
-    if u not in have: l.append('%s:%d:%s:%d'%(u,i,x,y)); i+=1
-print(repr(l)); print(i, file=sys.stderr)" "$cur" "$id" "$x" 2>"$STATE/.next-id")
+i=int(sys.argv[2])
+for spec in sys.argv[3:]:
+    u,x,y=spec.split(':')
+    if u not in have: l.append('%s:%d:%s:%s'%(u,i,x,y)); i+=1
+print(repr(l)); print(i, file=sys.stderr)" "$cur" "$id" "$@" 2>"$STATE/.next-id")
   gset org.cinnamon enabled-desklets "$new"
+  gset org.cinnamon next-desklet-id "$(cat "$STATE/.next-id")"; rm -f "$STATE/.next-id"
+}
+
+do_desklets() {
+  log "Desklets"
+  local d u
+  for u in fastfetch@cinnamon-theme sysmon@cinnamon-theme; do
+    put "$REPO/desklets/$u" "$HOME/.local/share/cinnamon/desklets/$u"
+  done
+  local w h x cur new
+  read -r w h <<< "$(screen_size)"; w=${w:-1920}
+  x=$(( w - 453 )); [ $x -lt 20 ] && x=20
+  enable_desklets "sysmon@cinnamon-theme:$x:60" "fastfetch@cinnamon-theme:$x:375"
   # Desklet-Anker: Desklets bei anderer Auflösung (RDP-Fenster) anteilig mitverschieben
   put "$REPO/extensions/desklet-anchor@cinnamon-theme" "$HOME/.local/share/cinnamon/extensions/desklet-anchor@cinnamon-theme"
   remember_path "$HOME/.config/nebel/desklet-anchor.json"
@@ -287,13 +295,58 @@ l=ast.literal_eval(sys.argv[1].replace('@as ',''))
 if 'desklet-anchor@cinnamon-theme' not in l: l.append('desklet-anchor@cinnamon-theme')
 print(repr(l))" "$cur")
   gset org.cinnamon enabled-extensions "$new"
-  gset org.cinnamon next-desklet-id "$(cat "$STATE/.next-id")"; rm -f "$STATE/.next-id"
   # Conky-Uhr von CBlue abschalten, falls vorhanden
   local a="$HOME/.config/autostart/conky-timefull.desktop"
   if [ -f "$a" ] && ! grep -q '^Hidden=true' "$a"; then
     remember_path "$a"; echo "Hidden=true" >> "$a"
     sed -i 's/^X-GNOME-Autostart-enabled=true/X-GNOME-Autostart-enabled=false/' "$a"
   fi
+  NEED_RESTART=1
+}
+
+WECKPILOT_REPO=nojan01/WeckPilot-Linux
+WECKPILOT_PKG=weck-pilot
+
+install_weckpilot() { # neueste Version von GitHub laden, falls nicht schon installiert
+  local arch info tag url have tmp rc=0
+  arch=$(dpkg --print-architecture)
+  [ "$arch" = amd64 ] || { warn "WeckPilot gibt es nur für amd64 (hier: $arch)"; return 1; }
+  info=$(python3 - "$WECKPILOT_REPO" <<'PY'
+import json, sys, urllib.request
+req = urllib.request.Request("https://api.github.com/repos/%s/releases/latest" % sys.argv[1],
+                             headers={"Accept": "application/vnd.github+json", "User-Agent": "nebel-install"})
+rel = json.load(urllib.request.urlopen(req, timeout=30))
+debs = [a["browser_download_url"] for a in rel.get("assets", []) if a["name"].endswith("_amd64.deb")]
+print(rel["tag_name"].lstrip("v"), debs[0] if debs else "")
+PY
+) || { warn "WeckPilot: GitHub nicht erreichbar"; return 1; }
+  read -r tag url <<< "$info"
+  [ -n "$url" ] || { warn "WeckPilot: kein Paket in der Freigabe $tag"; return 1; }
+  have=$(dpkg-query -W -f='${Status} ${Version}' "$WECKPILOT_PKG" 2>/dev/null | sed -n 's/^install ok installed //p')
+  if [ -n "$have" ] && dpkg --compare-versions "$have" ge "$tag"; then
+    log "WeckPilot $have ist aktuell"; return 0
+  fi
+  log "WeckPilot $tag laden und installieren (Administratorrechte, ggf. Passwort)"
+  tmp=$(mktemp -d /tmp/nebel-weckpilot.XXXXXX) || return 1
+  if python3 -c "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])" \
+       "$url" "$tmp/weckpilot_${tag}_amd64.deb"; then
+    chmod -R a+rX "$tmp"
+    as_root env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y \
+      "$tmp/weckpilot_${tag}_amd64.deb" || rc=$?
+  else
+    warn "WeckPilot: Download fehlgeschlagen"; rc=1
+  fi
+  rm -rf "$tmp"
+  return $rc
+}
+
+do_wecker() {
+  log "Wecker WeckPilot mit Uhr-Desklet"
+  install_weckpilot || warn "WeckPilot nicht installiert – das Desklet zeigt trotzdem die Uhr"
+  put "$REPO/fonts/Orbitron" "$HOME/.local/share/fonts/Orbitron"
+  fc-cache -f "$HOME/.local/share/fonts" >/dev/null 2>&1
+  put "$REPO/desklets/weckpilot@cinnamon-theme" "$HOME/.local/share/cinnamon/desklets/weckpilot@cinnamon-theme"
+  enable_desklets "weckpilot@cinnamon-theme:40:60"
   NEED_RESTART=1
 }
 
@@ -484,7 +537,7 @@ uninstall() {
   mv "$STATE" "$STATE.removed-$(date +%Y%m%d-%H%M%S)"
   [ $plank_touched = 1 ] && start_plank
   dbus-send --session --dest=org.Cinnamon --type=method_call /org/Cinnamon org.Cinnamon.RestartCinnamon boolean:true 2>/dev/null
-  log "Deinstallation abgeschlossen. Pakete (fastfetch, Plank) bleiben installiert."
+  log "Deinstallation abgeschlossen. Pakete (fastfetch, Plank, WeckPilot) bleiben installiert."
   [ $GUI = 1 ] && zenity --info --width=380 --title="Nebel" --text="Nebel wurde entfernt." 2>/dev/null
   exit 0
 }

@@ -12,7 +12,8 @@ Homepage: https://www.little-tools.de
 Description: Cinnamon-Desktop „Nebel“ – Theme, Dock, Desklets und mehr
  Graues Cinnamon-Theme mit Mint-Grün (abgeleitet von CBlue), Hintergrundbild
  „Linux Mint Nebel“ mit Tag/Nacht-Umschaltung, Plank-Reloaded-Dock mit
- Sitzungsmenü, Desklets für Systeminfo (fastfetch) und Systemlast, grauer
+ Sitzungsmenü, Desklets für Systeminfo (fastfetch), Systemlast und den Wecker
+ WeckPilot (wird beim Einrichten von GitHub geladen), grauer
  Mauszeiger, Sperr- und Anmeldebildschirm sowie Terminal-Profil.
  .
  Nach der Installation im Menü „Nebel einrichten“ starten. Fehlende Programme

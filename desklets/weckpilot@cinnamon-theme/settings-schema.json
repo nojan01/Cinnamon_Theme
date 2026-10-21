@@ -1,0 +1,42 @@
+{
+    "head": {
+        "type": "header",
+        "description": "Darstellung"
+    },
+    "clock-size": {
+        "type": "spinbutton",
+        "default": 48,
+        "min": 20,
+        "max": 120,
+        "step": 2,
+        "units": "pt",
+        "description": "Größe der Uhrzeit"
+    },
+    "font-size": {
+        "type": "spinbutton",
+        "default": 11,
+        "min": 7,
+        "max": 24,
+        "step": 1,
+        "units": "pt",
+        "description": "Schriftgröße für Datum und Wecker"
+    },
+    "show-seconds": {
+        "type": "switch",
+        "default": false,
+        "description": "Sekunden anzeigen"
+    },
+    "show-date": {
+        "type": "switch",
+        "default": true,
+        "description": "Datum anzeigen"
+    },
+    "opacity": {
+        "type": "scale",
+        "default": 30,
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "description": "Deckkraft des Hintergrunds (%)"
+    }
+}

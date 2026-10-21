@@ -162,6 +162,22 @@ gsettings set org.cinnamon next-desklet-id 7
 - `enabled-desklets` bleibt unverändert; verschoben wird nur die Anzeige. Zieht man ein
   Desklet, gilt die neue Position mit der dann aktuellen Größe als Bezug.
 
+## 4e. Wecker WeckPilot mit Uhr-Desklet
+
+- Baustein `wecker` in install.sh: lädt die neueste Freigabe von
+  [WeckPilot-Linux](https://github.com/nojan01/WeckPilot-Linux/releases) (Paket
+  `weck-pilot`, nur amd64) und installiert sie per apt, sofern nicht schon dieselbe oder
+  eine neuere Version installiert ist. Beim Entfernen von Nebel bleibt die App installiert.
+- Desklet `desklets/weckpilot@cinnamon-theme/` (oben links, 40/60): Uhrzeit in der
+  Schrift Orbitron mit grünem Leuchten wie in der App, Datum und nächster Wecker.
+  Die Schrift liegt in `fonts/Orbitron/` und wird nach `~/.local/share/fonts/` kopiert.
+- Den nächsten Wecker schreibt WeckPilot (ab 1.0.3) nach
+  `~/.config/weckpilot/next-alarm.json`; das Desklet beobachtet die Datei.
+- Geweckt wird von der App, nicht vom Desklet. Läuft WeckPilot nicht, zeigt das Desklet
+  einen Hinweis; ein Klick startet die App bzw. holt ihr Fenster nach vorn.
+- Einstellungen (Größe, Sekunden, Datum, Deckkraft) per Rechtsklick oder in
+  Nebel-Einstellungen → Desklets; die Sprache folgt 4c.
+
 ## 5. Dock: Plank Reloaded
 
 1. **[sudo]** Altes `plank` (0.11.89 aus Ubuntu) wurde zuerst installiert, dann durch **Plank Reloaded** ersetzt (Konflikt wird von apt aufgelöst). Installation über die offizielle PPA:
