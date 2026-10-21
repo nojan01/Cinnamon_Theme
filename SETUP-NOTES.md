@@ -714,7 +714,9 @@ angezeigt; „Alle Optionen …“ öffnet dafür `xlet-settings`.
 „Nebel einrichten“ ist seit 1.0.8 kein eigener Menüeintrag mehr, sondern die erste Seite
 „Einrichtung“. Ist noch nichts eingerichtet, öffnet das Programm auf dieser Seite, sonst
 auf „Darstellung“. install.sh vermerkt seinen Pfad in `~/.config/cinnamon-theme/install-path`,
-damit das Programm es auch ohne Paket (Aufruf aus dem Repository) findet. Mit
+damit das Programm es auch ohne Paket (Aufruf aus dem Repository) findet. Gibt es
+vermerktes und Paket-install.sh, nimmt es das mit der höheren `VERSION` (seit 1.0.25;
+vorher spielte ein veralteter Repository-Stand alte Desklets über das neuere Paket). Mit
 `NEBEL_FROM_SETTINGS=1` lässt install.sh den abschließenden zenity-Hinweis weg;
 Rückfragen (Passwort, Dock ersetzen?) kommen weiter als Dialog.
 `nebel-einstellungen --uninstall` entspricht `install.sh --uninstall`.

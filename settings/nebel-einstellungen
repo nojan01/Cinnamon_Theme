@@ -293,7 +293,7 @@ SYNC = 2  # GObject.BindingFlags.SYNC_CREATE
 
 
 def find_installer():
-    """Zuletzt benutztes install.sh (Paket oder Repository), sonst das aus dem Paket."""
+    """Neuestes install.sh: zuletzt benutztes (z. B. Repository) oder das aus dem Paket."""
     cands = []
     try:
         with open(os.path.join(CONF_DIR, "install-path"), encoding="utf-8") as f:
@@ -301,7 +301,19 @@ def find_installer():
     except OSError:
         pass
     cands.append("/usr/share/cinnamon-theme-nebel/install.sh")
-    return next((c for c in cands if c and os.path.isfile(c)), None)
+    cands = [c for c in cands if c and os.path.isfile(c)]
+    if not cands:
+        return None
+
+    def version(c):
+        # ein veralteter Repository-Stand darf das neuere Paket nicht überschreiben
+        try:
+            with open(os.path.join(os.path.dirname(c), "VERSION"), encoding="utf-8") as f:
+                return tuple(int(x) for x in f.read().strip().split("."))
+        except (OSError, ValueError):
+            return ()
+    best = max(version(c) for c in cands)
+    return next(c for c in cands if version(c) == best)
 
 
 # ------------------------------------------------------------------ Seitenbau
