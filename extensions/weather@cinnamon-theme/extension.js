@@ -830,7 +830,8 @@ class Weather {
     }
 
     // ------------------------------------------------------------ Sonnenstrahlen
-    // Eine Sonne knapp über dem oberen Rand, davon fächern 5–8 weiche Lichtkegel nach unten.
+    // Eine Sonne knapp über dem oberen Rand, deren Licht sich in unterschiedlich breiten,
+    // leicht gekrümmten Kegeln im Nebel streut.
     // Jeder Kegel wird nur einmal gezeichnet (Textur); pro Bild ändern sich nur Deckkraft
     // und Winkel – das kostet kaum Rechenzeit.
     _makeSun() {
@@ -839,10 +840,10 @@ class Weather {
         let sun = { sx, sy, beams: [] };
         // Richtung zur Bildschirmmitte unten, Fächer darum
         let mid = Math.atan2(W * 0.5 - sx, H - sy) * 180 / Math.PI;
-        let n = Math.round(rand(5, 8)), spread = rand(38, 55);
+        let n = Math.round(rand(4, 7)), spread = rand(28, 44);
         let len = Math.hypot(Math.max(sx, W - sx), H - sy) * 1.05;
         for (let i = 0; i < n; i++) {
-            let w = Math.round(rand(0.05, 0.16) * W * this.size / 100);
+            let w = Math.round(rand(0.06, 0.13) * W * this.size / 100);
             let a = new St.DrawingArea({ reactive: false, width: w, height: Math.round(len) });
             a.connect("repaint", area => this._drawBeam(area));
             a.set_pivot_point(0.5, 0);
@@ -863,8 +864,8 @@ class Weather {
         glow.connect("repaint", area => {
             let cr = area.get_context(), [w, h] = area.get_surface_size();
             let g = new Cairo.RadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-            g.addColorStopRGBA(0, 1, 0.95, 0.8, 0.55);
-            g.addColorStopRGBA(0.4, 1, 0.92, 0.75, 0.2);
+            g.addColorStopRGBA(0, 1, 0.95, 0.8, 0.34);
+            g.addColorStopRGBA(0.4, 1, 0.92, 0.75, 0.12);
             g.addColorStopRGBA(1, 1, 0.9, 0.7, 0);
             cr.setSource(g);
             cr.paint();
@@ -880,20 +881,23 @@ class Weather {
 
     _drawBeam(area) {
         let cr = area.get_context(), [w, h] = area.get_surface_size();
-        // mehrere ineinanderliegende Keile → weiche Ränder; längs nach unten ausblenden
-        let layers = 6;
+        // Transparente, ineinanderliegende Kurven lassen die Kanten weich auslaufen.
+        let layers = 12;
         for (let j = 0; j < layers; j++) {
-            let f = 1 - j / layers;                     // Breite: außen → innen
-            let top = w * 0.06 * f, bot = w * 0.5 * f;
+            let f = 1 - j / layers;
+            let top = w * 0.025 * f, bot = w * 0.46 * f;
+            let alpha = 0.008 + 0.042 * f * f;
             let g = new Cairo.LinearGradient(0, 0, 0, h);
-            g.addColorStopRGBA(0, 1, 0.96, 0.84, 0.16);
-            g.addColorStopRGBA(0.4, 1, 0.95, 0.82, 0.11);
+            g.addColorStopRGBA(0, 1, 0.97, 0.88, alpha);
+            g.addColorStopRGBA(0.38, 1, 0.95, 0.82, alpha * 0.68);
             g.addColorStopRGBA(1, 1, 0.94, 0.8, 0);
             cr.setSource(g);
             cr.moveTo(w / 2 - top, 0);
             cr.lineTo(w / 2 + top, 0);
-            cr.lineTo(w / 2 + bot, h);
-            cr.lineTo(w / 2 - bot, h);
+            cr.curveTo(w / 2 + top + bot * 0.12, h * 0.24,
+                       w / 2 + bot * 0.55, h * 0.72, w / 2 + bot, h);
+            cr.curveTo(w / 2 - bot * 0.62, h * 0.72,
+                       w / 2 - top - bot * 0.08, h * 0.24, w / 2 - top, 0);
             cr.closePath();
             cr.fill();
         }
