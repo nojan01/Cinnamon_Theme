@@ -5,7 +5,7 @@ gilt nur die in der Tabelle genannte Lizenz.
 
 | Teil | Urheber | Lizenz |
 |---|---|---|
-| Eigene Bestandteile: `install.sh`, `settings/`, `extensions/`, `desklets/`, `dock/`, `system/`, `session/`, `daynight/`, `terminal/`, `tools/`, `packaging/`, `plank/launchers/`, `plank/default-apps.conf`, `wallpapers/`, Dokumentation | © 2026 Norbert Jander | MIT (`LICENSE`) |
+| Eigene Bestandteile: `install.sh`, `settings/`, `extensions/`, `desklets/`, `dock/`, `system/`, `session/`, `screensaver/`, `daynight/`, `terminal/`, `tools/`, `packaging/`, `plank/launchers/`, `plank/default-apps.conf`, `wallpapers/`, Dokumentation | © 2026 Norbert Jander | MIT (`LICENSE`) |
 | Cinnamon-Theme `Nebel/` (abgeleitet von CBlue) | © Bundy01 (CBlue), © 2026 Norbert Jander (Änderungen) | GPL-3.0 (`LICENSE.GPL-3.0`) |
 | Dock-Themes `plank/themes/Nebel-Grau/`, `plank/themes/Nebel-Transparent/` (abgeleitet von CBlues `dock.theme`, Farben geändert) | © Bundy01 (CBlue), © 2026 Norbert Jander (Änderungen) | GPL-3.0 (`LICENSE.GPL-3.0`) |
 | `CBlue/`, `plank/themes/CBlue/` (unverändert) | © Bundy01 | GPL-3.0 (`LICENSE.GPL-3.0`) |

@@ -1,0 +1,868 @@
+#!/usr/bin/python3
+# Copyright (c) 2026 Norbert Jander – MIT-Lizenz (siehe LICENSE)
+"""Animierte Vorschau; --lock übergibt ausschließlich an Cinnamons echte Sperre."""
+import argparse
+from datetime import datetime
+import json
+import locale
+import logging
+import math
+import os
+from pathlib import Path
+import random
+import sys
+import time
+
+import cairo
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("PangoCairo", "1.0")
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango, PangoCairo  # noqa: E402
+
+LOG = logging.getLogger("nebel-screensaver")
+CONFIG = Path(GLib.get_user_config_dir())
+ALARM_FILE = CONFIG / "weckpilot/next-alarm.json"
+APP_BUS_NAME = "de.little-tools.weckpilot.linux.SingleInstance"
+SS_NAME = "org.cinnamon.ScreenSaver"
+SS_PATH = "/org/cinnamon/ScreenSaver"
+WEATHER_UUID = "weather@cinnamon-theme"
+AUTO_FILE = CONFIG / "cinnamon-theme/screensaver.json"
+GERMAN = next((os.environ[k] for k in
+               ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG")
+               if os.environ.get(k)), "").startswith("de")
+
+# Gleiche Geometrie und Farbpaletten wie in der Desktop-Wettererweiterung.
+LEAF_COLORS = [
+    (0.82, 0.45, 0.14), (0.74, 0.27, 0.12), (0.88, 0.64, 0.20),
+    (0.58, 0.35, 0.16), (0.64, 0.56, 0.22), (0.78, 0.36, 0.10),
+]
+MAPLE_COLORS = [
+    (0.80, 0.16, 0.10), (0.88, 0.32, 0.08), (0.70, 0.12, 0.14), (0.92, 0.50, 0.10),
+]
+MAPLE = [
+    (0, 1), (0.09, 0.80), (0.19, 0.83), (0.16, 0.62), (0.12, 0.42),
+    (0.38, 0.52), (0.47, 0.67), (0.57, 0.57), (0.86, 0.60), (0.67, 0.39), (0.73, 0.29),
+    (0.45, 0.24), (0.24, 0.15), (0.47, 0.03), (0.60, -0.13), (0.36, -0.06), (0.06, -0.06),
+]
+MAPLE_TIPS = [(0, 1), (0.86, 0.60), (0.60, -0.13), (-0.86, 0.60), (-0.60, -0.13)]
+
+
+class Leaf:
+    def __init__(self, rng, size, wind):
+        depth = rng.random()
+        self.maple = rng.random() < 0.25
+        self.size = round((20 + depth * 22) * size / 100) * (1.2 if self.maple else 1) / 2
+        palette = MAPLE_COLORS if self.maple else LEAF_COLORS
+        self.color = tuple(max(0, min(1, c + rng.uniform(-0.06, 0.06))) for c in rng.choice(palette))
+        self.shape = rng.random()
+        self.vy = (35 + depth * 45) / 2
+        self.drag = 0.8 + depth * 0.9
+        self.vx = wind * self.drag
+        self.f1, self.f2 = rng.uniform(0.6, 1.6), rng.uniform(1, 2.6)
+        self.flip = rng.uniform(1.5, 4.5)
+        self.phase = rng.uniform(0, math.tau)
+        self.rotation = rng.uniform(0, math.tau)
+        self.spin = math.radians(rng.uniform(-160, 160))
+        self.age = 0
+        self.x, self.y = rng.uniform(0, 960), rng.uniform(-30, 540)
+
+    def _draw_shape(self, cr, opacity=1):
+        w = h = self.size
+        r, g, b = self.color
+        if self.maple:
+            scale, cy = w / 1.9, h / 2
+            x0 = w * 0.06 + 0.4 * scale
+
+            def point(x, y):
+                return x0 + y * scale, cy + x * scale
+
+            points = MAPLE + [(-x, y) for x, y in reversed(MAPLE[1:])]
+            cr.move_to(*point(*points[0]))
+            for p in points[1:]:
+                cr.line_to(*point(*p))
+            cr.close_path()
+            cr.set_source_rgba(r, g, b, 0.95 * opacity)
+            cr.fill_preserve()
+            cr.set_source_rgba(r * 0.5, g * 0.5, b * 0.5, 0.9 * opacity)
+            cr.set_line_width(max(0.3, w / 40))
+            cr.set_line_join(cairo.LINE_JOIN_ROUND)
+            cr.stroke()
+            cr.set_line_width(max(0.25, w / 55))
+            for x, y in MAPLE_TIPS:
+                cr.move_to(*point(0, 0.02))
+                cr.line_to(*point(x * 0.8, y * 0.8))
+            cr.move_to(*point(0, 0.02))
+            cr.line_to(*point(0.03, -0.4))
+            cr.stroke()
+        else:
+            cy, x0, x1 = h / 2, w * 0.14, w * 0.97
+            length = x1 - x0
+            bw = h * (0.24 + self.shape * 0.2)
+            cr.move_to(x0, cy)
+            cr.curve_to(x0 + length * 0.2, cy - bw, x0 + length * 0.68, cy - bw * 0.95, x1, cy)
+            cr.curve_to(x0 + length * 0.68, cy + bw * 0.95, x0 + length * 0.2, cy + bw, x0, cy)
+            cr.close_path()
+            cr.set_source_rgba(r, g, b, 0.95 * opacity)
+            cr.fill_preserve()
+            cr.set_source_rgba(r * 0.55, g * 0.55, b * 0.55, 0.9 * opacity)
+            cr.set_line_width(max(0.35, w / 30))
+            cr.stroke()
+            cr.move_to(0, cy + h * 0.05)
+            cr.line_to(x0 + length * 0.85, cy)
+            cr.stroke()
+
+    def step(self, dt, wind, gust, rng):
+        self.age += dt
+        want = wind * self.drag + math.sin(self.age * self.f1 + self.phase) * 22.5
+        self.vx += (want - self.vx) * min(1, dt * 1.2)
+        self.x += self.vx * dt
+        self.y += self.vy * (0.55 + 0.6 * abs(math.sin(self.age * self.f2 + self.phase))) * dt
+        self.rotation += self.spin * (0.4 + gust * 0.6) * dt
+        if self.y > 540 + self.size or self.x < -80 or self.x > 1040:
+            if abs(wind) > 30 and rng.random() < 0.65:
+                self.x = -self.size - 5 if wind > 0 else 965
+                self.y = rng.uniform(-0.05, 0.65) * 540
+            else:
+                self.x, self.y = rng.uniform(0, 960), -self.size - rng.uniform(0, 20)
+            self.age = 0
+
+    def paint(self, cr, level):
+        cr.save()
+        cr.translate(self.x + self.size / 2, self.y + self.size / 2)
+        cr.rotate(self.rotation)
+        flip = math.cos(self.age * self.flip + self.phase)
+        cr.scale(math.copysign(max(0.15, abs(flip)), flip), 1)
+        cr.translate(-self.size / 2, -self.size / 2)
+        self._draw_shape(cr, level * 235 / 255)
+        cr.restore()
+
+
+def tr(de, en):
+    return de if GERMAN else en
+
+
+def read_alarm(path, now):
+    """WeckPilots ISO-Zeit ist lokal; deaktivierte/vergangene Wecker nie anzeigen."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("enabled"), bool):
+        raise ValueError("Invalid WeckPilot status")
+    if not data["enabled"]:
+        return None
+    when = datetime.fromisoformat(data["nextWake"])
+    if when.tzinfo is not None:
+        when = when.astimezone().replace(tzinfo=None)
+    if when <= now:
+        return None
+    label = data.get("label", "")
+    if not isinstance(label, str):
+        label = ""
+    return when, label
+
+
+def read_automation(path=AUTO_FILE):
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return False, 5
+    if (not isinstance(data, dict) or type(data.get("enabled")) is not bool or
+            type(data.get("minutes")) is not int or not 1 <= data["minutes"] <= 120):
+        raise ValueError("Invalid screensaver automation settings")
+    return data["enabled"], data["minutes"]
+
+
+class IdleWatcher(Gio.Application):
+    def __init__(self):
+        super().__init__(application_id="de.little_tools.NebelScreensaverIdle")
+        self.child = None
+        self.armed = True
+        self.previous_idle = 0
+        self.error = None
+
+    def do_activate(self):
+        if not hasattr(self, "timer"):
+            self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            self.hold()
+            self.timer = GLib.timeout_add_seconds(2, self.poll)
+
+    def stop_preview(self):
+        if self.child:
+            self.child.force_exit()
+            self.child = None
+
+    def finished(self, child, result):
+        try:
+            child.wait_check_finish(result)
+        except GLib.Error as error:
+            if self.child is child:
+                LOG.error("Automatische Vorschau: %s", error)
+        if self.child is child:
+            self.child = None
+
+    def poll(self):
+        if not Path(__file__).is_file():
+            self.quit()
+            return GLib.SOURCE_REMOVE
+        try:
+            enabled, minutes = read_automation()
+            if not enabled:
+                self.stop_preview()
+                self.armed = True
+                self.error = None
+                return GLib.SOURCE_CONTINUE
+            idle = self.bus.call_sync(
+                "org.cinnamon.Muffin.IdleMonitor", "/org/cinnamon/Muffin/IdleMonitor/Core",
+                "org.cinnamon.Muffin.IdleMonitor", "GetIdletime", None,
+                GLib.VariantType("(t)"), Gio.DBusCallFlags.NONE, 1500, None).unpack()[0]
+            if idle < minutes * 60000 or idle < self.previous_idle:
+                self.armed = True
+            self.previous_idle = idle
+            active = screensaver_call(self.bus, "GetActive", result=GLib.VariantType("(b)")).unpack()[0]
+            if active:
+                self.stop_preview()
+                self.armed = False
+            elif self.armed and self.child is None and idle >= minutes * 60000:
+                inhibited = self.bus.call_sync(
+                    "org.gnome.SessionManager", "/org/gnome/SessionManager",
+                    "org.gnome.SessionManager", "IsInhibited", GLib.Variant("(u)", (8,)),
+                    GLib.VariantType("(b)"), Gio.DBusCallFlags.NONE, 1500, None).unpack()[0]
+                if not inhibited:
+                    self.child = Gio.Subprocess.new(
+                        ["/usr/bin/python3", str(Path(__file__).resolve()), "--automatic"],
+                        Gio.SubprocessFlags.NONE)
+                    self.child.wait_check_async(None, self.finished)
+                    self.armed = False
+            self.error = None
+        except (OSError, ValueError, GLib.Error) as error:
+            self.stop_preview()
+            if str(error) != self.error:
+                LOG.error("Screensaver-Automatik: %s", error)
+                self.error = str(error)
+        return GLib.SOURCE_CONTINUE
+
+    def do_shutdown(self):
+        if hasattr(self, "timer"):
+            GLib.source_remove(self.timer)
+        self.stop_preview()
+        Gio.Application.do_shutdown(self)
+
+
+def alarm_text(alarm, now):
+    if alarm is None:
+        return tr("Kein Wecker gestellt", "No alarm set")
+    when, label = alarm
+    days = (when.date() - now.date()).days
+    day = (tr("Heute", "Today") if days == 0 else
+           tr("Morgen", "Tomorrow") if days == 1 else when.strftime("%a, %d.%m.%Y"))
+    return tr("Wecker: ", "Alarm: ") + f"{day}, {when:%H:%M}" + (f" · {label}" if label else "")
+
+
+def floating_position(width, height, block_width, block_height, elapsed):
+    margin, footer = 24, 40
+    travel_x = max(0, width - block_width - 2 * margin)
+    travel_y = max(0, height - block_height - margin - footer)
+    x = margin + travel_x * (0.5 + 0.5 * math.sin(elapsed * 0.011))
+    y = margin + travel_y * (0.5 + 0.5 * math.sin(elapsed * 0.011 * math.sqrt(2) + 0.8))
+    return x, y
+
+
+def app_running(bus):
+    result = bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus",
+                          "org.freedesktop.DBus", "NameHasOwner",
+                          GLib.Variant("(s)", (APP_BUS_NAME,)), GLib.VariantType("(b)"),
+                          Gio.DBusCallFlags.NONE, 1000, None)
+    return result.unpack()[0]
+
+
+def read_weather(config=CONFIG):
+    folder = Path(__file__).resolve().parent
+    schema_path = folder / "settings-schema.json"
+    if not schema_path.is_file():
+        schema_path = folder.parent / "extensions" / WEATHER_UUID / "settings-schema.json"
+    defaults = json.loads(schema_path.read_text(encoding="utf-8"))
+    values = {k: v["default"] for k, v in defaults.items() if "default" in v}
+    path = config / "cinnamon/spices" / WEATHER_UUID / f"{WEATHER_UUID}.json"
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return values
+    if not isinstance(settings, dict):
+        raise ValueError("Invalid weather settings")
+    for key, default in values.items():
+        entry = settings.get(key, {})
+        if not isinstance(entry, dict):
+            raise ValueError(f"Invalid weather setting: {key}")
+        value = entry.get("value", default)
+        if isinstance(default, bool):
+            valid = isinstance(value, bool)
+        elif isinstance(default, (int, float)):
+            spec = defaults[key]
+            valid = (type(value) in (int, float) and math.isfinite(value) and
+                     spec.get("min", value) <= value <= spec.get("max", value))
+        else:
+            valid = isinstance(value, type(default))
+        if not valid:
+            raise ValueError(f"Invalid weather setting: {key}")
+        values[key] = value
+    return values
+
+
+class Effects:
+    """Effekte auf einer kleinen Zeichenfläche; Texturen werden einmalig erzeugt."""
+    WIDTH, HEIGHT = 960, 540
+
+    def __init__(self, settings, demo=False):
+        self.settings = settings
+        self.demo = demo
+        self.rng = random.Random()
+        self.kind = None
+        self.event_at = -1
+        self.next_at = 0
+        self.duration = 0
+        self.previous = None
+        self.particles = []
+        self.leaves = []
+        self.beams = []
+        self.fog = self._fog_texture()
+        self.elapsed = 0
+        self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.WIDTH, self.HEIGHT)
+
+    def _fog_texture(self):
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 384, 160)
+        cr = cairo.Context(surface)
+        for _ in range(32):
+            x, y = self.rng.uniform(0, 384), self.rng.uniform(45, 115)
+            radius = self.rng.uniform(25, 80)
+            gradient = cairo.RadialGradient(x, y, 0, x, y, radius)
+            gradient.add_color_stop_rgba(0, 0.88, 0.90, 0.93, 0.09)
+            gradient.add_color_stop_rgba(1, 0.88, 0.90, 0.93, 0)
+            cr.set_source(gradient)
+            cr.paint()
+        # Auch angeschnittene Schwaden müssen vor der rechteckigen Texturgrenze verschwinden.
+        cr.set_operator(cairo.OPERATOR_DEST_IN)
+        for width, height in ((384, 0), (0, 160)):
+            mask = cairo.LinearGradient(0, 0, width, height)
+            for i in range(65):
+                position = i / 64
+                edge = min(1, min(position, 1 - position) / 0.22)
+                alpha = edge * edge * (3 - 2 * edge)
+                mask.add_color_stop_rgba(position, 1, 1, 1, alpha)
+            cr.set_source(mask)
+            cr.paint()
+        return surface
+
+    def _beam_texture(self, width):
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, 900)
+        cr = cairo.Context(surface)
+        # Horizontale Gaußprofile statt sichtbar ineinanderliegender Keile.
+        for y in range(900):
+            progress = y / 900
+            half = width * (0.025 + 0.46 * progress)
+            g = cairo.LinearGradient(width / 2 - half, 0, width / 2 + half, 0)
+            for i in range(17):
+                u = i / 16
+                alpha = math.exp(-((u - 0.5) * 5) ** 2) * 0.24 * (1 - progress) ** 1.4
+                if i in (0, 16):
+                    alpha = 0
+                g.add_color_stop_rgba(u, 1, 0.96, 0.85, alpha)
+            cr.set_source(g)
+            cr.rectangle(0, y, width, 1)
+            cr.fill()
+        return surface
+
+    def _start_event(self, now):
+        s = self.settings
+        month, hour = now.month, now.hour
+        options = [kind for kind, allowed in (
+            ("rain", not s["seasonal"] or 3 <= month <= 11),
+            ("leaves", not s["seasonal"] or 9 <= month <= 11),
+            ("snow", not s["seasonal"] or month in (12, 1, 2)),
+            ("sun", 8 <= hour < 18),
+        ) if s[kind] and allowed]
+        if self.demo:
+            options = [kind for kind in ("rain", "leaves", "sun", "snow") if s[kind]]
+            index = options.index(self.previous) + 1 if self.previous in options else 0
+            kind = options[index % len(options)] if options else None
+        elif self.previous == "rain" and "sun" in options:
+            kind = "sun"
+        else:
+            choices = [kind for kind in options if kind != self.previous] or options
+            kind = self.rng.choice(choices) if choices else None
+        self.kind = kind
+        self.previous = kind
+        self.event_at = self.elapsed
+        self.duration = self.rng.uniform(min(s["duration-min"], s["duration-max"]),
+                                         max(s["duration-min"], s["duration-max"]))
+        self.next_at = self.elapsed + self.duration + 60 * self.rng.uniform(
+            min(s["pause-min"], s["pause-max"]), max(s["pause-min"], s["pause-max"]))
+        if self.demo:
+            self.duration = 15
+            self.next_at = self.elapsed + self.duration + 1
+        self.particles = []
+        self.leaves = []
+        if kind == "sun":
+            self.beams = [(self.rng.uniform(-0.15, 0.65),
+                           self._beam_texture(self.rng.randint(80, 160)),
+                           self.rng.uniform(0, 6.28)) for _ in range(5)]
+        if kind == "leaves":
+            self.leaves = [Leaf(self.rng, s["size"], self._wind()[0])
+                           for _ in range(round(22 * min(2, s["intensity"] / 100)))]
+        if kind in ("rain", "snow"):
+            count = {"rain": 180, "snow": 65}[kind]
+            count = round(count * min(2, s["intensity"] / 100))
+            self.particles = [[self.rng.uniform(-50, 1010), self.rng.uniform(-30, 570),
+                               self.rng.uniform(0.6, 1.4), self.rng.uniform(0, 6.28)]
+                              for _ in range(count)]
+
+    def step(self, dt, now):
+        self.elapsed += dt
+        if not self.settings["active"]:
+            self.kind = None
+            return
+        if self.elapsed >= self.next_at:
+            self._start_event(now)
+        wind, gust = self._wind()
+        for leaf in self.leaves:
+            leaf.step(dt, wind, gust, self.rng)
+        for p in self.particles:
+            if self.kind == "rain":
+                vx, vy = self._rain_velocity(p[2])
+            else:
+                vx, vy = wind * p[2], 40 * p[2]
+            p[0] += vx * dt
+            p[1] += vy * dt
+            if p[1] > 570:
+                p[0], p[1] = self.rng.uniform(-50, 1010), -30
+            if p[0] < -60:
+                p[0] = 1020
+            elif p[0] > 1020:
+                p[0] = -60
+
+    def _wind(self):
+        t = self.elapsed
+        gust = max(0.15, 0.75 + 0.35 * math.sin(t * 0.31) +
+                   0.25 * math.sin(t * 1.07 + 2) + 0.15 * math.sin(t * 2.3 + 1))
+        return self.settings["wind"] * gust, gust
+
+    def _rain_velocity(self, scale):
+        depth = (scale - 0.6) / 0.8
+        return (self._wind()[0] * 0.7,
+                (750 + depth * 650) * (0.9 + self.settings["size"] / 1000) / 2)
+
+    def render(self):
+        cr = cairo.Context(self.surface)
+        cr.set_operator(cairo.OPERATOR_CLEAR)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+        self.paint(cr, details=False)
+
+    def paint(self, cr, details=True):
+        s = self.settings
+        if not s["active"]:
+            return
+        t = self.elapsed
+        age = t - self.event_at
+        level = max(0, min(1, age / 4, (self.duration - age) / 5))
+        strength = min(1.5, s["intensity"] / 100) * level
+        if self.kind == "rain":
+            cr.set_source_rgba(0.02, 0.03, 0.05, 0.15 * strength)
+            cr.paint()
+        if self.kind == "sun" and strength:
+            for angle, surface, phase in self.beams:
+                cr.save()
+                cr.translate(100, -70)
+                cr.rotate(-angle - 0.008 * math.sin(t * 0.06 + phase))
+                cr.set_source_surface(surface, -surface.get_width() / 2, 0)
+                cr.paint_with_alpha(strength * (0.7 + 0.25 * math.sin(t * 0.15 + phase)))
+                cr.restore()
+        if s["fog"]:
+            for i in range(3):
+                cr.save()
+                cr.translate(-180 + math.sin(t * 0.018 + i * 2) * 130,
+                             255 + i * 68 + math.sin(t * 0.04 + i) * 18)
+                cr.scale(3.2, 1.2 + i * 0.25)
+                cr.set_source_surface(self.fog, 0, 0)
+                cr.paint_with_alpha(min(1, s["fog-intensity"] / 100) * 0.65)
+                cr.restore()
+        if details:
+            self.paint_details(cr)
+
+    def paint_details(self, cr):
+        age = self.elapsed - self.event_at
+        level = max(0, min(1, age / 4, (self.duration - age) / 5))
+        if not self.settings["active"] or not level:
+            return
+        if self.kind == "leaves":
+            for leaf in self.leaves:
+                leaf.paint(cr, level)
+        elif self.kind == "snow":
+            size = self.settings["size"] / 100
+            for x, y, scale, phase in self.particles:
+                depth = max(0, min(1, (scale - 0.6) / 0.8))
+                drift = math.sin(self.elapsed * (0.35 + depth * 0.45) + phase) * (5 + depth * 9)
+                cx, cy = cr.user_to_device(x + drift, y)
+                # Flockengröße in Ausgabepixeln, nicht mit dem Hintergrund hochskalieren.
+                radius = max(1.25, (1.25 + 2.0 * depth * depth) * size)
+                cr.save()
+                cr.identity_matrix()
+                gradient = cairo.RadialGradient(cx, cy, 0, cx, cy, radius)
+                alpha = (0.32 + depth * 0.48) * level
+                gradient.add_color_stop_rgba(0, 0.96, 0.98, 1, alpha)
+                gradient.add_color_stop_rgba(0.4, 0.96, 0.98, 1, alpha * 0.8)
+                gradient.add_color_stop_rgba(1, 0.96, 0.98, 1, 0)
+                cr.set_source(gradient)
+                cr.arc(cx, cy, radius, 0, math.tau)
+                cr.fill()
+                cr.restore()
+        elif self.kind == "rain":
+            size = self.settings["size"] / 100
+            cr.set_line_cap(cairo.LINE_CAP_ROUND)
+            for x, y, scale, _phase in self.particles:
+                depth = (scale - 0.6) / 0.8
+                length = (12 + depth * 24) * size / 2
+                vx, vy = self._rain_velocity(scale)
+                distance = math.hypot(vx, vy)
+                cr.set_source_rgba(205 / 255, 216 / 255, 230 / 255, (60 + depth * 110) / 255 * level)
+                cr.set_line_width((1 if depth > 0.75 else 0.5) * size)
+                cr.move_to(x, y)
+                cr.line_to(x + length * vx / distance, y + length * vy / distance)
+                cr.stroke()
+
+
+class Preview:
+    def __init__(self, bus, windowed=False, demo=True):
+        self.bus = bus
+        self.windows = []
+        self.canvases = []
+        self.backgrounds = {}
+        self.background = None
+        self.alarm = ""
+        self.warning = ""
+        self.last_error = None
+        self.status_pending = False
+        self.status_cancel = Gio.Cancellable()
+        self.closed = False
+        self.started = self.last_frame = time.monotonic()
+        self.next_frame = self.started
+        self.pointer = None
+        settings = read_weather()
+        # Der Desktop-Hauptschalter soll die eigenständig gestartete Vorschau nicht abschalten.
+        settings["active"] = True
+        self.effects = Effects(settings, demo=demo)
+        self.effects.render()
+        self.bg_settings = Gio.Settings.new("org.cinnamon.desktop.background")
+        self.font_settings = Gio.Settings.new("org.cinnamon.desktop.screensaver")
+        self.bg_changed = self.bg_settings.connect("changed::picture-uri", self._background_changed)
+        self._background_changed()
+        self.subscription = bus.signal_subscribe(
+            SS_NAME, SS_NAME, "ActiveChanged", SS_PATH, None,
+            Gio.DBusSignalFlags.NONE, self._screensaver_changed)
+        self._poll_alarm()
+        self.status_timer = GLib.timeout_add_seconds(2, self._poll_alarm)
+        display = Gdk.Display.get_default()
+        monitors = [display.get_monitor(i) for i in range(display.get_n_monitors())]
+        for index, monitor in enumerate(monitors[:1] if windowed else monitors):
+            window = Gtk.Window(title=tr("Nebel – Vorschau (nicht gesperrt)", "Nebel – preview (not locked)"))
+            window.set_default_size(960, 540)
+            window.set_app_paintable(True)
+            canvas = Gtk.DrawingArea()
+            canvas.connect("draw", self._draw)
+            window.add(canvas)
+            window.add_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.BUTTON_PRESS_MASK)
+            window.connect("key-press-event", lambda *_args: self.close())
+            window.connect("button-press-event", lambda *_args: self.close())
+            window.connect("motion-notify-event", self._motion)
+            window.connect("delete-event", lambda *_args: self.close())
+            window.connect("destroy", lambda *_args: self.close())
+            self.windows.append(window)
+            self.canvases.append(canvas)
+            if not windowed:
+                window.fullscreen_on_monitor(window.get_screen(), index)
+            window.show_all()
+            if not windowed:
+                window.get_window().set_cursor(Gdk.Cursor.new_for_display(display, Gdk.CursorType.BLANK_CURSOR))
+        self.tick_id = self.canvases[0].add_tick_callback(self._tick) if self.canvases else 0
+
+    def _background_changed(self, *_args):
+        uri = self.bg_settings.get_string("picture-uri")
+        path = Gio.File.new_for_uri(uri).get_path() if uri else None
+        if not path or not Path(path).is_file():
+            if uri:
+                LOG.warning("Hintergrund nicht verfügbar: %s", uri)
+            folder = Path(__file__).resolve().parent
+            candidates = [folder / "wallpaper.jpg",
+                          folder.parent / "wallpapers/Linux_Mint_Nebel_3840x2160.jpg"]
+            path = str(next((p for p in candidates if p.is_file()), candidates[0]))
+        self.background = GdkPixbuf.Pixbuf.new_from_file(path)
+        self.backgrounds.clear()
+
+    def _screensaver_changed(self, _bus, _sender, _path, _interface, _signal, parameters):
+        if parameters.unpack()[0]:
+            self.close()
+
+    def _poll_alarm(self):
+        if self.closed:
+            return GLib.SOURCE_REMOVE
+        if self.status_pending:
+            return GLib.SOURCE_CONTINUE
+        try:
+            now = datetime.now()
+            self.alarm = alarm_text(read_alarm(ALARM_FILE, now), now)
+            self.status_pending = True
+            self.bus.call(
+                "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+                "NameHasOwner", GLib.Variant("(s)", (APP_BUS_NAME,)), GLib.VariantType("(b)"),
+                Gio.DBusCallFlags.NONE, 1000, self.status_cancel, self._status_ready)
+        except (OSError, ValueError, KeyError, TypeError, GLib.Error) as error:
+            self.alarm = tr("Weckzeit nicht lesbar", "Cannot read alarm")
+            self.warning = ""
+            self.status_pending = False
+            self._status_error(error)
+        return GLib.SOURCE_CONTINUE
+
+    def _status_error(self, error):
+        if str(error) != self.last_error:
+            LOG.error("WeckPilot: %s", error)
+            self.last_error = str(error)
+
+    def _status_ready(self, bus, result):
+        self.status_pending = False
+        try:
+            running = bus.call_finish(result).unpack()[0]
+            if self.closed:
+                return
+            self.warning = "" if running else tr(
+                "WeckPilot läuft nicht – kein zuverlässiger Weckruf",
+                "WeckPilot is not running – alarm may not sound")
+            self.last_error = None
+        except GLib.Error as error:
+            if not self.closed:
+                self.warning = tr("WeckPilot-Status nicht lesbar", "Cannot read WeckPilot status")
+                self._status_error(error)
+
+    def _tick(self, _canvas, clock):
+        now = clock.get_frame_time() / 1e6
+        if now + 0.001 >= self.next_frame:
+            interval = 1 / self.effects.settings["fps"]
+            missed = max(1, math.floor((now - self.next_frame) / interval) + 1)
+            self.next_frame += missed * interval
+            self._frame(now)
+        return GLib.SOURCE_CONTINUE
+
+    def _frame(self, now):
+        dt = max(0, min(0.1, now - self.last_frame))
+        self.last_frame = now
+        self.effects.step(dt, datetime.now())
+        self.effects.render()
+        for canvas in self.canvases:
+            canvas.queue_draw()
+        return GLib.SOURCE_CONTINUE
+
+    def _motion(self, _window, event):
+        position = (event.x_root, event.y_root)
+        if time.monotonic() - self.started < 1 or self.pointer is None:
+            self.pointer = position
+        elif math.hypot(position[0] - self.pointer[0], position[1] - self.pointer[1]) > 8:
+            self.close()
+        return False
+
+    @staticmethod
+    def _text(cr, text, y, font, color, x=50, width=860, haze=0):
+        layout = PangoCairo.create_layout(cr)
+        layout.set_font_description(Pango.FontDescription(font))
+        layout.set_width(round(width * Pango.SCALE))
+        layout.set_alignment(Pango.Alignment.CENTER)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_single_paragraph_mode(True)
+        layout.set_text(text.replace("\n", " "), -1)
+        if haze:
+            cr.set_source_rgba(*color[:3], color[3] * 0.09)
+            for dx, dy in ((-haze, 0), (haze, 0), (0, -haze), (0, haze),
+                           (-haze * 0.7, -haze * 0.7), (haze * 0.7, haze * 0.7)):
+                cr.move_to(x + dx, y + dy)
+                PangoCairo.show_layout(cr, layout)
+            color = (*color[:3], color[3] * 0.78)
+        cr.move_to(x, y)
+        cr.set_source_rgba(*color)
+        PangoCairo.show_layout(cr, layout)
+
+    def _draw(self, canvas, cr):
+        w, h = canvas.get_allocated_width(), canvas.get_allocated_height()
+        cached = self.backgrounds.get(canvas)
+        if cached is None or cached[:2] != (w, h):
+            image = self.background
+            ratio = max(w / image.get_width(), h / image.get_height())
+            scaled = image.scale_simple(max(w, math.ceil(image.get_width() * ratio)),
+                                        max(h, math.ceil(image.get_height() * ratio)),
+                                        GdkPixbuf.InterpType.BILINEAR)
+            self.backgrounds[canvas] = (w, h, scaled)
+        image = self.backgrounds[canvas][2]
+        Gdk.cairo_set_source_pixbuf(cr, image, (w - image.get_width()) / 2, (h - image.get_height()) / 2)
+        cr.paint()
+        cr.save()
+        cr.scale(w / 960, h / 540)
+        cr.set_source_surface(self.effects.surface, 0, 0)
+        cr.paint()
+        self.effects.paint_details(cr)
+        cr.set_source_rgba(0, 0, 0, 0.24)
+        cr.paint()
+        cr.restore()
+        cr.save()
+        scale = min(w / 960, h / 540)
+        cr.scale(scale, scale)
+        width, height = w / scale, h / scale
+        now = datetime.now()
+        rows = [
+            (now.strftime("%H:%M"), self.font_settings.get_string("font-time"), (0.65, 0.9, 0.5, 1)),
+            (now.strftime("%A, %d. %B %Y"), self.font_settings.get_string("font-date"), (0.94, 0.94, 0.94, 1)),
+            (self.alarm, self.font_settings.get_string("font-message"), (0.85, 0.95, 0.8, 1)),
+            (self.warning, self.font_settings.get_string("font-message"), (1, 0.78, 0.5, 1)),
+        ]
+        sizes = []
+        for text, font, _color in rows:
+            layout = PangoCairo.create_layout(cr)
+            layout.set_font_description(Pango.FontDescription(font))
+            layout.set_single_paragraph_mode(True)
+            layout.set_text(text.replace("\n", " "), -1)
+            sizes.append(layout.get_pixel_size())
+        block_height = sum(size[1] + 8 for size in sizes)
+        if block_height > height - 64:
+            fit = (height - 64) / block_height
+            cr.scale(fit, fit)
+            width, height = width / fit, height / fit
+        block_width = min(width - 48, max(size[0] for size in sizes) + 24)
+        x, y = floating_position(width, height, block_width, block_height, self.effects.elapsed)
+        for index, ((text, font, color), (_text_width, text_height)) in enumerate(zip(rows, sizes)):
+            self._text(cr, text, y, font, color, x, block_width,
+                       haze=2.4 if index == 0 else 1.15 if index in (1, 2) else 0)
+            y += text_height + 8
+        cr.restore()
+        return False
+
+    def close(self):
+        if self.closed:
+            return True
+        self.closed = True
+        self.status_cancel.cancel()
+        if self.status_timer:
+            GLib.source_remove(self.status_timer)
+            self.status_timer = 0
+        if self.tick_id:
+            self.canvases[0].remove_tick_callback(self.tick_id)
+            self.tick_id = 0
+        if self.subscription:
+            self.bus.signal_unsubscribe(self.subscription)
+            self.subscription = 0
+        if self.bg_changed:
+            self.bg_settings.disconnect(self.bg_changed)
+            self.bg_changed = 0
+        windows, self.windows = self.windows, []
+        self.canvases.clear()
+        self.backgrounds.clear()
+        for window in windows:
+            window.destroy()
+        if Gtk.main_level():
+            Gtk.main_quit()
+        return True
+
+
+def screensaver_call(bus, method, parameters=None, result=None):
+    return bus.call_sync(SS_NAME, SS_PATH, SS_NAME, method, parameters, result,
+                         Gio.DBusCallFlags.NONE, 15000, None)
+
+
+def wait_for_unlock(bus):
+    loop = GLib.MainLoop()
+    errors = []
+
+    def check():
+        try:
+            active = screensaver_call(bus, "GetActive", result=GLib.VariantType("(b)")).unpack()[0]
+            if active:
+                return GLib.SOURCE_CONTINUE
+        except GLib.Error as error:
+            errors.append(error)
+        loop.quit()
+        return GLib.SOURCE_CONTINUE
+
+    timer = GLib.timeout_add_seconds(1, check)
+    try:
+        loop.run()
+    finally:
+        GLib.source_remove(timer)
+    if errors:
+        raise errors[0]
+
+
+def lock(bus):
+    # Kein eigener Passwortdialog, kein SetActive/Deaktivieren und kein Locker-Ersatz.
+    settings = Gio.Settings.new("org.cinnamon.desktop.screensaver")
+    if settings.get_string("custom-screensaver-command"):
+        raise RuntimeError(tr("Ein fremder Custom-Locker ist eingestellt; Cinnamon-Sperre nicht verfügbar.",
+                              "A custom locker is configured; native Cinnamon locking is unavailable."))
+    if not settings.get_boolean("show-clock"):
+        LOG.warning("%s", tr("Cinnamons Uhr ist abgeschaltet; die Weckzeit-Nachricht bleibt unsichtbar.",
+                             "Cinnamon's clock is disabled; the alarm message will not be visible."))
+    now = datetime.now()
+    try:
+        message = alarm_text(read_alarm(ALARM_FILE, now), now)
+        if not app_running(bus):
+            message += "\n" + tr("WeckPilot läuft nicht", "WeckPilot is not running")
+    except (OSError, ValueError, KeyError, TypeError, GLib.Error) as error:
+        LOG.error("WeckPilot: %s", error)
+        message = tr("Weckzeit nicht lesbar", "Cannot read alarm")
+    # Nur die Standardnachricht wird von Cinnamon ohne angehängten Benutzernamen gezeigt.
+    original = settings.get_user_value("default-message")
+    if not settings.set_string("default-message", message):
+        raise RuntimeError(tr("Sperrnachricht konnte nicht gesetzt werden.",
+                              "Could not set lock-screen message."))
+    Gio.Settings.sync()
+    try:
+        screensaver_call(bus, "Lock", GLib.Variant("(s)", ("",)))
+        wait_for_unlock(bus)
+    finally:
+        if settings.get_string("default-message") == message:
+            if original is None:
+                settings.reset("default-message")
+            elif not settings.set_value("default-message", original):
+                LOG.error("Sperrnachricht konnte nicht wiederhergestellt werden.")
+            Gio.Settings.sync()
+
+
+def main(argv=None):
+    locale.setlocale(locale.LC_ALL, "")
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--preview", action="store_true", help="Animierte Vollbild-Vorschau (keine Sperre)")
+    mode.add_argument("--automatic", action="store_true", help="Schoner mit normalen Wetter-Zeitregeln")
+    mode.add_argument("--lock", action="store_true", help="Cinnamon sicher mit Weckzeit-Nachricht sperren")
+    mode.add_argument("--watch", action="store_true", help="Inaktivitäts-Automatik für die Sitzung")
+    parser.add_argument("--windowed", action="store_true", help="Vorschau im Fenster")
+    args = parser.parse_args(argv)
+    if (args.lock or args.watch) and args.windowed:
+        parser.error("--windowed requires preview mode")
+    try:
+        if args.watch:
+            return IdleWatcher().run([])
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        if args.lock:
+            lock(bus)
+            return 0
+        active = screensaver_call(bus, "GetActive", result=GLib.VariantType("(b)")).unpack()[0]
+        if active:
+            raise RuntimeError(tr("Der Sperrbildschirm ist bereits aktiv.", "The lock screen is already active."))
+        preview = Preview(bus, args.windowed, demo=not args.automatic)
+        Gtk.main()
+        preview.close()
+        return 0
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, GLib.Error) as error:
+        LOG.error("%s", error)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
