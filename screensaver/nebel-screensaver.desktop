@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Nebel Screensaver Preview
+Name[de]=Nebel-Bildschirmschoner – Vorschau
+Comment=Animated wallpaper, weather and next WeckPilot alarm (not a lock screen)
+Comment[de]=Animierter Hintergrund, Wetter und nächste WeckPilot-Weckzeit (keine Sperre)
+Exec=nebel-screensaver --preview
+Icon=preferences-desktop-screensaver
+Terminal=false
+Categories=Settings;DesktopSettings;
+Actions=Lock;
+
+[Desktop Action Lock]
+Name=Lock safely with alarm time
+Name[de]=Sicher sperren mit Weckzeit
+Exec=nebel-screensaver --lock

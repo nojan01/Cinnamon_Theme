@@ -31,6 +31,32 @@ EN = {
     "Hintergrund": "Background",
     "Desklets": "Desklets",
     "Wetter": "Weather",
+    "Bildschirmschoner": "Screensaver",
+    "Nebel-Schoner automatisch starten": "Start Nebel screensaver automatically",
+    "Start nach Inaktivität (Minuten)": "Start after inactivity (minutes)",
+    "Die Cinnamon-Sperre hat Vorrang. Startet sie früher, erscheint die Animation nicht.":
+        "Cinnamon locking takes priority. If it starts earlier, the animation will not appear.",
+    "Nebel-Vorschau": "Nebel preview",
+    "Animierte Vorschau starten": "Start animated preview",
+    "Sicher sperren mit Weckzeit": "Lock safely with alarm time",
+    "Cinnamon-Sperrbildschirm": "Cinnamon lock screen",
+    "Bei Inaktivität aktivieren": "Activate when idle",
+    "Beim Aktivieren sperren": "Lock when activated",
+    "Uhr anzeigen": "Show clock",
+    "Zeitschrift": "Clock font",
+    "Datumsschrift": "Date font",
+    "Schrift für Weckzeit und Hinweise": "Alarm and message font",
+    "Schriften für Nebel und Cinnamon": "Fonts for Nebel and Cinnamon",
+    "Bildschirmschoner nicht installiert. Baustein unter „Einrichtung“ einrichten.":
+        "Screensaver is not installed. Set up the component under “Setup”.",
+    "Vorschau mit Hintergrund, Wetter und Weckzeit; keine Sperre. Maus oder Taste beendet die Vorschau.":
+        "Preview with wallpaper, weather and alarm time; not a lock screen. Move the mouse or press a key to exit.",
+    "Beim sicheren Sperren zeigt Cinnamon den statischen Hintergrund und die aktuelle Weckzeit als Nachricht.":
+        "When locking safely, Cinnamon shows the static wallpaper and the current alarm time as a message.",
+    "Die Weckzeit ist dort eine Momentaufnahme. WeckPilot muss für den Weckruf weiterlaufen.":
+        "The alarm time there is a snapshot. WeckPilot must keep running for the alarm to sound.",
+    "Die Animation ist keine Sperre. Cinnamons automatische Sperre und Energiesparen bleiben unverändert.":
+        "The animation is not a lock screen. Cinnamon's automatic locking and power saving remain unchanged.",
     "Themen": "Themes",
     "Schreibtisch (Cinnamon)": "Desktop (Cinnamon)",
     "Anwendungen (GTK)": "Applications (GTK)",
@@ -851,6 +877,109 @@ def page_desklets():
     return p
 
 
+def page_screensaver():
+    p = Page()
+    p.section(_("Nebel-Vorschau"))
+    for text in (
+        "Vorschau mit Hintergrund, Wetter und Weckzeit; keine Sperre. Maus oder Taste beendet die Vorschau.",
+        "Beim sicheren Sperren zeigt Cinnamon den statischen Hintergrund und die aktuelle Weckzeit als Nachricht.",
+        "Die Weckzeit ist dort eine Momentaufnahme. WeckPilot muss für den Weckruf weiterlaufen.",
+        "Die Animation ist keine Sperre. Cinnamons automatische Sperre und Energiesparen bleiben unverändert.",
+    ):
+        label = Gtk.Label(label=_(text), xalign=0, max_width_chars=58, wrap=True)
+        p.box.pack_start(label, False, False, 0)
+    candidates = [
+        os.path.join(HOME, ".local/bin/nebel-screensaver"),
+        "/usr/bin/nebel-screensaver",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                     "screensaver/nebel-screensaver"),
+    ]
+    helper = next((path for path in candidates if os.path.isfile(path)), None)
+    conf = os.path.join(CONF_DIR, "screensaver.json")
+    try:
+        with open(conf, encoding="utf-8") as file:
+            automatic = json.load(file)
+    except FileNotFoundError:
+        automatic = {"enabled": False, "minutes": 5}
+    if (not isinstance(automatic, dict) or type(automatic.get("enabled")) is not bool or
+            type(automatic.get("minutes")) is not int or not 1 <= automatic["minutes"] <= 120):
+        raise ValueError("Invalid screensaver automation settings")
+    auto = Gtk.Switch(active=automatic["enabled"], sensitive=bool(helper))
+    delay = Gtk.SpinButton.new_with_range(1, 120, 1)
+    delay.set_value(automatic["minutes"])
+    delay.set_sensitive(bool(helper) and auto.get_active())
+
+    def save_automatic(widget, *_args):
+        try:
+            os.makedirs(CONF_DIR, exist_ok=True)
+            GLib.file_set_contents(conf, json.dumps(
+                {"enabled": auto.get_active(), "minutes": delay.get_value_as_int()}).encode("utf-8"))
+            delay.set_sensitive(bool(helper) and auto.get_active())
+            if auto.get_active() and helper:
+                # Gio.Application hält genau einen Wächter pro Sitzung am Leben.
+                Gio.Subprocess.new(["/usr/bin/python3", helper, "--watch"], Gio.SubprocessFlags.NONE)
+        except (OSError, GLib.Error) as error:
+            dialog = Gtk.MessageDialog(
+                transient_for=widget.get_toplevel(), modal=True, message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text=str(error))
+            dialog.run()
+            dialog.destroy()
+    auto.connect("notify::active", save_automatic)
+    delay.connect("value-changed", lambda w: debounce(w, lambda: save_automatic(w)))
+    p.row(_("Nebel-Schoner automatisch starten"), auto)
+    p.row(_("Start nach Inaktivität (Minuten)"), delay)
+    hint = Gtk.Label(label=_("Die Cinnamon-Sperre hat Vorrang. Startet sie früher, erscheint die Animation nicht."),
+                     xalign=0, max_width_chars=58, wrap=True)
+    p.box.pack_start(hint, False, False, 0)
+
+    def launch(button, mode):
+        def finished(proc, result):
+            button.set_sensitive(True)
+            try:
+                _ok, _out, err = proc.communicate_utf8_finish(result)
+                if proc.get_successful():
+                    return
+                message = err or _("Fehler (Code %d).") % proc.get_exit_status()
+            except GLib.Error as error:
+                message = error.message
+            dialog = Gtk.MessageDialog(
+                transient_for=button.get_toplevel(), modal=True, message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text=message)
+            dialog.run()
+            dialog.destroy()
+        try:
+            proc = Gio.Subprocess.new(["/usr/bin/python3", helper, mode],
+                                      Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
+        except GLib.Error as error:
+            dialog = Gtk.MessageDialog(
+                transient_for=button.get_toplevel(), modal=True, message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text=error.message)
+            dialog.run()
+            dialog.destroy()
+            return
+        button.set_sensitive(False)
+        proc.communicate_utf8_async(None, None, finished)
+
+    for title, mode in (("Animierte Vorschau starten", "--preview"),
+                        ("Sicher sperren mit Weckzeit", "--lock")):
+        button = Gtk.Button(label=_(title), sensitive=bool(helper))
+        button.connect("clicked", launch, mode)
+        p.row(_(title), button)
+    if not helper:
+        p.note(_("Bildschirmschoner nicht installiert. Baustein unter „Einrichtung“ einrichten."))
+    s = gsettings("org.cinnamon.desktop.screensaver")
+    if s:
+        p.section(_("Cinnamon-Sperrbildschirm"))
+        p.g_switch(s, "idle-activation-enabled", _("Bei Inaktivität aktivieren"))
+        p.g_switch(s, "lock-enabled", _("Beim Aktivieren sperren"))
+        p.g_switch(s, "show-clock", _("Uhr anzeigen"))
+        p.section(_("Schriften für Nebel und Cinnamon"))
+        p.g_font(s, "font-time", _("Zeitschrift"))
+        p.g_font(s, "font-date", _("Datumsschrift"))
+        p.g_font(s, "font-message", _("Schrift für Weckzeit und Hinweise"))
+    return p
+
+
 # ------------------------------------------------------------------ Fenster
 class App(Gtk.Application):
     def __init__(self, page=None):
@@ -878,6 +1007,7 @@ class App(Gtk.Application):
             ("background", _("Hintergrund"), page_background),
             ("desklets", _("Desklets"), page_desklets),
             ("weather", _("Wetter"), lambda: page_extension("weather@cinnamon-theme", _("Wetter"))),
+            ("screensaver", _("Bildschirmschoner"), page_screensaver),
         ]
         for name, title, build in pages:
             try:
@@ -899,7 +1029,7 @@ class App(Gtk.Application):
 
 
 if __name__ == "__main__":
-    # Aufruf: nebel-einstellungen [--page setup|appearance|panel|menu|dock|background|desklets|weather]
+    # Aufruf: nebel-einstellungen [--page setup|appearance|panel|menu|dock|background|desklets|weather|screensaver]
     #         nebel-einstellungen --uninstall   (alles rückgängig, wie install.sh --uninstall)
     if "--uninstall" in sys.argv:
         inst = find_installer()

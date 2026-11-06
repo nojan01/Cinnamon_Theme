@@ -9,11 +9,13 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 ROOT="$WORK/root"; SHARE="$ROOT/usr/share/$PKG"; DOC="$ROOT/usr/share/doc/$PKG"
 
 mkdir -p "$SHARE" "$DOC" "$ROOT/usr/bin" "$ROOT/usr/share/applications" "$ROOT/DEBIAN"
-cp -r "$REPO"/{install.sh,VERSION,LICENSE,LICENSE.GPL-3.0,COPYRIGHT.md,Nebel,wallpapers,desklets,session,plank,dock,extensions,daynight,terminal,system,fonts} "$SHARE/"
+cp -r "$REPO"/{install.sh,VERSION,LICENSE,LICENSE.GPL-3.0,COPYRIGHT.md,Nebel,wallpapers,desklets,session,plank,dock,extensions,daynight,terminal,system,fonts,screensaver} "$SHARE/"
 mkdir -p "$SHARE/tools"; cp "$REPO/tools/build-nebel-cursor.py" "$SHARE/tools/"
 cp "$REPO/packaging/nebel-einrichten" "$ROOT/usr/bin/"
 cp "$REPO/settings/nebel-einstellungen" "$ROOT/usr/bin/"
 cp "$REPO/settings/nebel-einstellungen.desktop" "$ROOT/usr/share/applications/"
+ln -s "/usr/share/$PKG/screensaver/nebel-screensaver" "$ROOT/usr/bin/nebel-screensaver"
+cp "$REPO/screensaver/nebel-screensaver.desktop" "$ROOT/usr/share/applications/"
 cp "$REPO/packaging/debian/copyright" "$DOC/copyright"
 cp "$REPO/README.md" "$REPO/SETUP-NOTES.md" "$REPO/COPYRIGHT.md" "$DOC/"
 printf '%s (%s) stable; urgency=low\n\n  * Version %s\n\n -- Norbert Jander <n.jander@posteo.de>  %s\n' \
@@ -24,7 +26,8 @@ find "$ROOT" -depth -type d -name __pycache__ -exec rm -rf {} +
 find "$ROOT" -type d -exec chmod 755 {} +
 find "$ROOT" -type f -exec chmod 644 {} +
 chmod 755 "$ROOT/usr/bin/nebel-einrichten" "$ROOT/usr/bin/nebel-einstellungen" "$SHARE/install.sh" "$SHARE"/system/*.sh \
-  "$SHARE/session/cinnamon-theme-session" "$SHARE/daynight/cinnamon-theme-daynight" "$SHARE/tools/build-nebel-cursor.py" "$SHARE/dock/nebel-dock-add"
+  "$SHARE/session/cinnamon-theme-session" "$SHARE/daynight/cinnamon-theme-daynight" "$SHARE/tools/build-nebel-cursor.py" "$SHARE/dock/nebel-dock-add" \
+  "$SHARE/screensaver/nebel-screensaver"
 
 SIZE=$(du -sk --exclude=DEBIAN "$ROOT" | cut -f1)
 sed -e "s/@VERSION@/$VERSION/" -e "s/@SIZE@/$SIZE/" "$REPO/packaging/debian/control" > "$ROOT/DEBIAN/control"

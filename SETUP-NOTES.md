@@ -409,6 +409,87 @@ gsettings set $S font-message 'JetBrains Mono 13'
 ```
 Vorher war überall die Schrift `Ubuntu` eingestellt (64/24/14), `use-custom-format` stand auf false und das Datumsformat war `%A %B %-e`.
 
+### Animierte Nebel-Vorschau und Weckzeit
+
+- Baustein `screensaver` installiert `screensaver/nebel-screensaver` und den Menüeintrag.
+  Einrichtung ohne Paket: `bash install.sh --components screensaver`.
+- Cinnamon setzt Uhr- und Datumsfarbe direkt im Textmarkup; GTK-CSS kann sie daher
+  nicht überschreiben. Die Einrichtung ändert diese beiden festen Weißwerte in
+  `cinnamon-screensaver` zu Mittelgrau (`#B8B8B8`) und sichert die Originaldatei
+  unter `/var/lib/cinnamon-theme-nebel/`. Dafür sind Administratorrechte nötig.
+  Beim Entfernen von Nebel wird die Sicherung zurückgespielt; wenn ein Paketupdate
+  die gepatchte Datei bereits ersetzt hat, bleibt dessen Datei erhalten.
+- Start über Nebel-Einstellungen → **Bildschirmschoner** oder
+  `nebel-screensaver --preview`; `--windowed` zeigt ein Testfenster.
+- Die manuelle Vorschau ist ein Testlauf: Regen → Blätter → Sonne → Schnee,
+  jeweils nur aktivierte Effekte, 15 Sekunden pro Effekt und eine Sekunde Pause.
+  Tages- und Jahreszeit werden hier ignoriert. Der Inaktivitätswächter startet
+  stattdessen `--automatic` mit den normalen Wetter-Zeitregeln und Pausen.
+- GTK 3/Cairo zeichnet den aktuellen Hintergrund mit Nebel, Regen, Blättern, Schnee
+  oder Sonnenstrahlen. Effekte, Stärke, Größe, Wind, Bildrate, Jahreszeit, Dauer und
+  Pausen stammen aus den Einstellungen der Wetter-Erweiterung. Effekte wechseln,
+  unabhängig vom Hauptschalter für Desktop-Wetter; einzelne Effekt-Schalter gelten weiterhin.
+  Sonne erscheint nur von 8 bis 18 Uhr; der erste passende Effekt beginnt sofort.
+  Dock-Spritzer und Schneeauflage werden ohne Dock nicht dargestellt.
+- Pro Monitor ein Vollbildfenster, mit Uhr/Datum und nächster Weckzeit aus
+  `~/.config/weckpilot/next-alarm.json` (Abfrage alle zwei Sekunden). Vergangene und
+  deaktivierte Weckzeiten werden nicht angezeigt. Eine Warnung erscheint, wenn
+  WeckPilot nicht auf dem Sitzungsbus läuft. Die Vorschau selbst weckt nicht.
+- Uhr, Datum und Weckzeit wandern gemeinsam langsam über beide Achsen. Unterschiedliche,
+  nicht ganzzahlig gekoppelte Geschwindigkeiten vermeiden eine einfache Pendelbahn.
+  Die Bewegung nutzt die gesamte verfügbare Fläche mit Randabstand und berücksichtigt
+  die gemessene Textgröße. Jeder Monitor skaliert die Schrift proportional; auch
+  Hochformat und Ultrawide werden ohne verzerrten oder abgeschnittenen Text unterstützt.
+  Sehr lange Wecker-Bezeichnungen werden mit Auslassungspunkten gekürzt.
+- Schrift und Größe für Uhr, Datum sowie Weckzeit/Hinweise stammen direkt aus
+  `font-time`, `font-date` und `font-message` der Cinnamon-Sperrbildschirm-Einstellungen.
+  Änderungen auf der Seite **Bildschirmschoner** wirken auch in der laufenden Animation.
+  Uhrzeit erhält einen weicheren grünen Lichtsaum, Datum und Weckzeit einen dezenten
+  Nebelschleier. Passt der Textblock nicht in die Monitorhöhe, wird er proportional verkleinert.
+- Die Animation läuft mit GTK-Frame-Clock (Wetter-Bildrate als Obergrenze), nicht
+  mit einem unabhängigen Zeichen-Zeitgeber. WeckPilots Laufstatus wird asynchron
+  abgefragt, damit eine verzögerte D-Bus-Antwort die Animation nicht anhält.
+- Blätter verwenden dieselbe Geometrie, Farbpalette, Stiele, Ahorn-Adern und
+  Taumel-/Böenbewegung wie die Desktop-Erweiterung. Regen und Blätter werden als
+  Vektoren direkt in Monitorauflösung gezeichnet; nur die weichen atmosphärischen
+  Effekte werden aus der kleinen Zeichenfläche hochskaliert. Gerade Regentropfen
+  sind entlang ihrer tatsächlichen Flugrichtung ausgerichtet.
+- Schnee wird ebenfalls direkt in Ausgabepixeln gezeichnet: kleine, unterschiedlich
+  transparente Flocken mit weichen Rändern statt hochskalierter weißer Kreise.
+  Ihre Größe wächst nicht mit der Monitorauflösung; Tiefe variiert Größe,
+  Sichtbarkeit, Fallgeschwindigkeit und seitliches Schweben.
+- Nebeltexturen blenden an allen vier Rändern weich bis auf vollständig transparent
+  aus, damit beim Verschieben keine rechteckigen Flächenkanten sichtbar werden.
+- Bewegung der Maus (nach kurzer Anlaufzeit), Klick oder Taste beendet die Vorschau.
+  Sie verhindert weder die automatische Sperre noch die Energieverwaltung; bei
+  Aktivierung von Cinnamons Sperrbildschirm schließt sie.
+- Nebel-Einstellungen → **Bildschirmschoner**: eigener Automatik-Schalter und Wartezeit
+  von 1–120 Minuten (Vorgabe ausgeschaltet/5 Minuten), gespeichert in
+  `~/.config/cinnamon-theme/screensaver.json`. Der Installer richtet den Autostart
+  `nebel-screensaver --watch` ein; Einschalten startet den Wächter auch sofort.
+  Ein einzelner Gio.Application-Prozess fragt alle zwei Sekunden Cinnamons
+  `org.cinnamon.Muffin.IdleMonitor.GetIdletime` ab. Er startet höchstens eine Vorschau
+  pro Inaktivitätsphase und respektiert Idle-Inhibitoren (z. B. Videowiedergabe).
+  Ausschalten beendet seine Vorschau. Die normale Cinnamon-Sperre hat Vorrang:
+  liegt ihre Startzeit früher, erscheint keine Animation. Keine Änderung der
+  systemeigenen Inaktivitäts-, Sperr- oder Energie-Einstellungen.
+- `nebel-screensaver --lock` bzw. **Sicher sperren mit Weckzeit** ruft ausschließlich
+  `org.cinnamon.ScreenSaver.Lock` auf. Die Weckzeit wird vorübergehend als
+  `default-message` gesetzt, damit Cinnamon keinen Benutzernamen darunter anhängt.
+  Nach dem Entsperren (auch bei Fehlern) wird der vorherige Wert wiederhergestellt,
+  sofern die Nachricht zwischenzeitlich nicht extern geändert wurde. Kein eigener
+  Passwortdialog, keine Änderung an Passwortschutz oder Hintergrund. Die
+  Nachricht ist eine Momentaufnahme; automatische Sperren verwenden den normalen
+  Cinnamon-Text. **Uhr anzeigen** muss für die Nachricht eingeschaltet sein.
+- Cinnamon 6.6 unterstützt keine animierten Plugins im sicheren Sperrbildschirm.
+  `custom-screensaver-command` ersetzt den nativen Locker vollständig und wird
+  deshalb **nicht** gesetzt. Die gesperrte Variante bleibt statisch. Ist bereits
+  ein fremder Custom-Locker eingestellt, wird der sichere Start ausdrücklich abgelehnt.
+- Abhängigkeiten zusätzlich zu GTK/PyGObject: `python3-cairo`, `python3-gi-cairo`,
+  `cinnamon-screensaver`. Die Vorschau ändert keine Wetter-/WeckPilot-Einstellungen.
+  Dateien und Menüeintrag sind wie die anderen Bausteine im Installer gesichert
+  und werden bei `--uninstall` wieder entfernt bzw. wiederhergestellt.
+
 ## 11. Terminal-Profil „Nebel“
 
 - Das GNOME-Terminal-Profil mit der UUID `4e3b6c1a-9d2f-4c57-b8a1-6e0f2c9d7a11` ist als Export in `terminal/nebel-profile.dconf` abgelegt.

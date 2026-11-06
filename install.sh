@@ -36,7 +36,7 @@ declare -A DESC=(
   [plank]="Dock Plank mit Theme Nebel-Grau"
   [dockmenu]="Mint-Menü → Dock (Rechtsklick „Zum Dock hinzufügen“, Favoriten)"
   [weather]="Wetter auf dem Desktop: Regen, Blätter, Schnee, Sonnenstrahlen, Nebelschwaden (abschaltbar)"
-  [screensaver]="Sperrbildschirm mit JetBrains Mono"
+  [screensaver]="Nebel-Bildschirmschoner: animierte Vorschau und sicher sperren mit Weckzeit"
   [terminal]="Terminal-Profil „Nebel“"
   [settings]="Programm „Nebel-Einstellungen“ (alle Einstellungen an einem Ort)"
   [lightdm]="Anmeldebildschirm (root)"
@@ -125,6 +125,7 @@ declare -A PKGS=(
   [daynight]="systemd"
   [desklets]="fastfetch"
   [session]="python3-gi gir1.2-gtk-3.0 cinnamon-session"
+  [screensaver]="python3-gi python3-gi-cairo python3-cairo gir1.2-gtk-3.0 cinnamon-screensaver"
   [plank]="plank-reloaded"
   [terminal]="gnome-terminal"
   [lightdm]="lightdm slick-greeter"
@@ -479,14 +480,46 @@ print(repr(l))" "$cur")
 }
 
 do_screensaver() {
-  log "Sperrbildschirm"
+  log "Nebel-Bildschirmschoner und Sperrbildschirm"
+  local first_install=1
+  has_backup mark screensaver - && first_install=0
+  remember_path "$STATE/screensaver.json"
+  local dir="$HOME/.local/share/cinnamon-theme/screensaver" bin="$HOME/.local/bin/nebel-screensaver"
+  put "$REPO/screensaver" "$dir"
+  cp "$REPO/extensions/weather@cinnamon-theme/settings-schema.json" "$dir/settings-schema.json"
+  cp "$REPO/wallpapers/Linux_Mint_Nebel_3840x2160.jpg" "$dir/wallpaper.jpg"
+  chmod 755 "$dir/nebel-screensaver"
+  remember_path "$bin"; mkdir -p "$(dirname "$bin")"
+  ln -sfn "$dir/nebel-screensaver" "$bin"
+  local app="$HOME/.local/share/applications/nebel-screensaver.desktop"
+  remember_path "$app"; mkdir -p "$(dirname "$app")"
+  python3 - "$REPO/screensaver/nebel-screensaver.desktop" "$app" "$bin" <<'PY'
+import pathlib, sys
+src, dst, binary = map(pathlib.Path, sys.argv[1:])
+quoted = '"' + str(binary).replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$') + '"'
+dst.write_text(src.read_text().replace('Exec=nebel-screensaver ', 'Exec=' + quoted + ' '), encoding='utf-8')
+PY
+  local auto="$HOME/.config/autostart/nebel-screensaver.desktop"
+  remember_path "$auto"; mkdir -p "$(dirname "$auto")"
+  python3 - "$auto" "$bin" <<'PY'
+import pathlib, sys
+binary = sys.argv[2].replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$')
+pathlib.Path(sys.argv[1]).write_text(
+    '[Desktop Entry]\nType=Application\nName=Nebel Screensaver Automation\n'
+    'Exec="' + binary + '" --watch\nOnlyShowIn=X-Cinnamon;\n'
+    'X-GNOME-Autostart-enabled=true\nNoDisplay=true\n', encoding='utf-8')
+PY
   local S=org.cinnamon.desktop.screensaver
-  gset $S use-custom-format true
-  gset $S time-format '%H:%M'
-  gset $S date-format '%A, %-d. %B'
-  gset $S font-time 'JetBrains Mono Light 64'
-  gset $S font-date 'JetBrains Mono 22'
-  gset $S font-message 'JetBrains Mono 13'
+  if [ "$first_install" = 1 ]; then
+    gset $S use-custom-format true
+    gset $S time-format '%H:%M'
+    gset $S date-format '%A, %-d. %B'
+    gset $S font-time 'JetBrains Mono Light 64'
+    gset $S font-date 'JetBrains Mono 22'
+    gset $S font-message 'JetBrains Mono 13'
+  fi
+  root_script install-screensaver-color.sh install \
+    || die "Cinnamons Sperrbildschirm-Schriftfarbe konnte nicht angepasst werden."
 }
 
 do_terminal() {
@@ -536,6 +569,8 @@ uninstall() {
           daynight) systemctl --user disable --now cinnamon-theme-daynight.timer >/dev/null 2>&1 ;;
           dockmenu) local pid; for pid in $(pgrep -f 'nebel-dock-add --watch-favorites'); do kill "$pid"; done ;;
           lightdm)  root_script install-lightdm.sh --uninstall || warn "Anmeldebildschirm nicht zurückgesetzt" ;;
+          screensaver) root_script install-screensaver-color.sh uninstall \
+                         || warn "Sperrbildschirm-Schriftfarbe nicht zurückgesetzt" ;;
         esac ;;
     esac
   done < <(tac "$BACKUP")

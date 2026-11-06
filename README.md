@@ -55,6 +55,8 @@ Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
 
 - `Nebel/` – eigenes Cinnamon-Theme (erzeugt mit `tools/build-nebel-theme.py`)
 - `wallpapers/` – Hintergrundbilder 4K/5K, jeweils Nacht und Tag
+- `screensaver/` – animierte Nebel-Vorschau mit Wetter und WeckPilot-Weckzeit;
+  sicher sperren über Cinnamon mit statischem Hintergrund und Weckzeit-Nachricht
 - `dock/`, `extensions/dock-menu@…` – Programme aus dem Mint-Menü ins Dock aufnehmen;
   Dock-Punkt „Anwendungen“ öffnet das Mint-Menü mit Suche
 - `extensions/weather@cinnamon-theme` – Wettereffekte auf dem Desktop
@@ -68,4 +70,35 @@ Einzelheiten zu jeder Einstellung stehen in `SETUP-NOTES.md`.
 - `CBlue/cinnamon/TimeFull` – Conky-Konfiguration
 - `CBlue/cinnamon/Wallpaper.png` – Hintergrundbild
 
+## Nebel-Bildschirmschoner
 
+Den Baustein **Nebel-Bildschirmschoner** unter **Einrichtung** installieren.
+Unter **Bildschirmschoner** in den Nebel-Einstellungen oder im Menü
+**Nebel-Bildschirmschoner – Vorschau** lässt sich die Animation starten.
+Alternativ: `nebel-screensaver --preview` (zum Testen: `--windowed`).
+Mausbewegung, Klick oder Taste beendet die Vorschau; sie sperrt den Rechner **nicht**.
+Sie verwendet den aktuellen Hintergrund, die Wetter-Einstellungen und zeigt die nächste
+Weckzeit aus WeckPilot. Für den Weckruf muss WeckPilot weiterhin laufen.
+Der Hauptschalter für Desktop-Wetter schaltet die Effekte im Schoner nicht ab;
+die einzelnen Effekt-Schalter gelten weiterhin. Die manuelle Vorschau zeigt die
+aktivierten Effekte im Testwechsel (je 15 Sekunden, eine Sekunde Pause), unabhängig
+von Tages- und Jahreszeit. Der automatische Schoner verwendet dagegen die normalen
+Wetter-Zeitregeln und Pausen.
+Uhr, Datum und Weckzeit wandern langsam in beide Richtungen über den Bildschirm,
+mit unterschiedlichen Geschwindigkeiten. Größe und Bewegungsbereich passen sich
+jedem Monitor an, auch bei Hochformat oder Ultrawide; der Text bleibt innerhalb der Ränder.
+
+**Sicher sperren mit Weckzeit** bzw. `nebel-screensaver --lock` übergibt an den echten
+Cinnamon-Sperrbildschirm. Er zeigt den statischen Hintergrund und die Weckzeit als
+Nachricht (Momentaufnahme beim Sperren). Animationen werden dort von Cinnamon 6.6 nicht
+unterstützt. Die Option **Uhr anzeigen** muss für die Nachricht eingeschaltet sein.
+Die Uhr- und Datumsschrift des nativen Sperrbildschirms ist mittelgrau statt weiß;
+die Einrichtung passt dafür Cinnamons fest codierte Farbe mit Administratorrechten
+an und stellt die Originaldatei beim Entfernen von Nebel wieder her.
+Unter **Bildschirmschoner → Nebel-Schoner automatisch starten** lässt sich die Animation
+nach **1 bis 120 Minuten Inaktivität** einschalten (Vorgabe: ausgeschaltet, 5 Minuten).
+Der Sitzungswächter wird beim Anmelden gestartet; Einschalten in den Einstellungen wirkt
+auch in der laufenden Sitzung. Ausschalten beendet eine automatisch gestartete Vorschau.
+Die Vorschau ersetzt den Locker nicht: Cinnamons automatische Sperre hat Vorrang und
+zeigt keine zusätzliche Weckzeit-Nachricht. Bei einer kürzeren Cinnamon-Sperrzeit
+erscheint die Animation nicht. Passwortschutz, Sperrverzögerung und Energiesparen bleiben unverändert.
